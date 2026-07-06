@@ -1,6 +1,6 @@
 # Dell 3521 Hackintosh - macOS Big Sur 11.0
 
-![Hackintosh Banner](https://raw.githubusercontent.com/user-attachments/assets/hackintosh-banner.jpg)
+![Hackintosh Banner](https://wallpapercave.com/wp/wp3333706.jpg)
 
 ✅ **Status**: Fully Tested & Working
 🍎 **macOS Version**: Big Sur 11.0 (20.99.99)
