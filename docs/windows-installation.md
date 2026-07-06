@@ -1,251 +1,78 @@
-# 💾 Windows Installation Guide
+# Windows Installation
 
-This guide covers creating the USB installer on Windows, BIOS configuration, and installing macOS Big Sur on your Dell 3521.
-
----
-
-## 💾 Phase 1: Create USB Installer (Windows)
-
-### Prerequisites
-
-- Windows 10/11 installed
-- USB drive **≥16GB**
-- Administrator rights
-- OpCore-Simplify already run (EFI built)
-
-### Step 1.1: Run Environment Setup
+## Step 1: Build EFI
 
 ```cmd
 cd %USERPROFILE%\Downloads\Dell-3521-Hackintosh\scripts\windows
 setup_environment.bat
-```
-
-### Step 1.2: Build OpenCore EFI
-
-```cmd
+create_hardware_report.bat
 build_opencore.bat
 ```
 
-Follow the on-screen instructions in OpCore-Simplify:
-1. Select Hardware Report
-2. Select macOS Big Sur 11
-3. Skip ACPI customization
-4. Select kexts (pre-configured list provided)
-5. Select MacBookAir5,2 SMBIOS
-6. Build EFI
+## Step 2: Create USB
 
-### Step 1.3: Create USB Installer
-
-**Option A: Using the Script (Recommended)**
-
+**Option A: Script (Easy)**
 ```cmd
 create_usb_installer.bat
 ```
 
-**WARNING**: This will **ERASE ALL DATA** on the selected USB drive!
+**Option B: Rufus (Recommended)**
+1. Download [Rufus](https://rufus.ie/)
+2. Select USB, choose macOS image
+3. Partition: **GPT**, Target: **UEFI**
+4. Click Start
+5. Copy `Output/EFI/` to USB's EFI folder
+6. Copy `com.apple.recovery.boot/` to USB root
 
-1. When prompted, select your USB drive letter
-2. Confirm with `YES` when warned about data loss
-3. Wait for diskpart to format and copy files
+**Option C: Manual**
+1. Open `diskmgmt.msc`
+2. Delete USB partitions, create GPT
+3. Format FAT32, label "OPENCORE"
+4. Copy files manually
 
-The script will:
-- Clean and format USB as GPT with FAT32 EFI partition
-- Copy OpenCore EFI files
-- Copy macOS recovery image
+## Step 3: BIOS
 
----
+Press **F2** on boot:
 
-**Option B: Using Rufus (Windows Utility)**
+| Setting | Value |
+|---------|-------|
+| SATA | **AHCI** |
+| Secure Boot | **Disabled** |
+| Boot | **UEFI** |
+| VT-d | **Disabled** |
 
-[Rufus](https://rufus.ie/) is a free, open-source USB formatting tool that works great for creating Hackintosh USB installers on Windows.
+Save (F10).
 
-### Steps:
+## Step 4: Install
 
-1. **Download Rufus** from https://rufus.ie/
+1. Press **F12** → Select USB
+2. OpenCore picker → **macOS Recovery**
+3. **Disk Utility** → View → Show All Devices
+4. Select drive → **Erase**
+   - Name: `Macintosh`
+   - Format: **APFS**
+   - Scheme: **GUID**
+5. **Reinstall macOS Big Sur**
+6. Wait 40-60 minutes
+7. ⚠️ **DO NOT REBOOT**
 
-2. **Launch Rufus** (no installation needed - portable app)
+## Step 5: Copy EFI (Critical)
 
-3. **Configure Rufus**:
-   - **Device**: Select your USB drive (≥16GB)
-   - **Boot selection**: Click `SELECT` and choose your macOS Big Sur .iso or .img file
-   - **Partition scheme**: `GPT` (for UEFI)
-   - **Target system**: `UEFI (non-CSM)`
-   - **File system**: `FAT32`
-   - **Cluster size**: Default
-
-4. **Click START** and wait for Rufus to create the bootable USB
-
-5. **After Rufus completes**, manually copy the OpenCore EFI folder:
-   - Open File Explorer
-   - Navigate to USB drive's `EFI` folder
-   - Copy your built EFI from `Output\EFI\*` to the USB's `EFI\` folder
-   - Copy `com.apple.recovery.boot` folder to the USB root
-
-6. **Final USB structure** should be:
-   ```
-   USB Drive (E:)/
-   ├── EFI/
-   │   ├── BOOT/
-   │   └── OC/
-   └── com.apple.recovery.boot/
-       ├── BaseSystem.chunklist
-       └── BaseSystem.dmg
-   ```
-
-**Note**: If using a macOS recovery image from OpCore-Simplify, select "Non-bootable" in Rufus and manually populate the files instead.
-
----
-
-**Option C: Manual Method (Disk Management)**
-
-If you prefer manual setup:
-
-1. Open **Disk Management** (`diskmgmt.msc`)
-2. Find your USB, delete all partitions
-3. Create new GPT partition
-4. Format as FAT32 with label "OPENCORE"
-5. Copy EFI and recovery files manually
-
----
-
-## 🖥️ Phase 2: BIOS Configuration
-
-### Enter BIOS
-During boot, press **F2** to enter BIOS setup.
-
-### Critical Settings
-
-| Section | Setting | Value |
-|---------|---------|-------|
-| **System Configuration** | SATA Operation | **AHCI** (not RAID/Legacy) |
-| **Security** | Secure Boot | **Disabled** ⚠️ CRITICAL |
-| **Boot** | Boot List Option | **UEFI** |
-| **Boot** | Fast Boot | **Disabled** |
-| **Advanced** | Virtualization | Your preference |
-| **Advanced** | VT-d | **Disabled** |
-
-**Save & Exit**: Press `F10` to save changes and reboot
-
----
-
-## 🍎 Phase 3: Install macOS Big Sur
-
-### Step 3.1: Boot from USB
-
-1. Power on the Dell 3521
-2. Press **F12** for the boot menu
-3. Select your USB drive (labeled "OPENCORE")
-4. OpenCore picker will appear
-
-### Step 3.2: Boot macOS Recovery
-
-1. In OpenCore picker, select **"macOS Recovery"**
-2. Wait for macOS Recovery to load (2-5 minutes)
-
-### Step 3.3: Format Target Drive
-
-1. From macOS Utilities, open **Disk Utility**
-2. Click **View** → **Show All Devices**
-3. Select your **internal SSD/HDD** (NOT the USB)
-4. Click **Erase**:
-   - **Name**: `Macintosh`
-   - **Format**: **APFS**
-   - **Scheme**: **GUID Partition Map**
-5. Click **Erase** to confirm
-
-### Step 3.4: Install macOS
-
-1. Close Disk Utility
-2. Select **Reinstall macOS Big Sur**
-3. Choose your formatted drive
-4. Click **Continue** and follow prompts
-5. **Installation time**: 40-60 minutes
-6. ⚠️ **DO NOT REBOOT** when installation completes!
-
----
-
-## 💾 Phase 4: Transfer EFI to Internal Drive
-
-**CRITICAL - Do this BEFORE rebooting!**
-
-While still in macOS Recovery:
-
-1. From the Utilities menu, open **Terminal**
-2. Run these commands:
+Before rebooting, in Recovery Terminal:
 
 ```bash
-# List all disks
-diskutil list
-
-# Mount the internal EFI partition
-# (usually disk0s1 for the main drive)
 diskutil mount disk0s1
-
-# Verify EFI mounted
-ls /Volumes/EFI
-
-# Copy OpenCore EFI from USB to internal drive
-# (USB EFI is at /Volumes/OPENCORE/)
 cp -R /Volumes/OPENCORE/EFI /Volumes/EFI/
-
-# Verify copy
-ls /Volumes/EFI/EFI/
-
-# Unmount internal EFI
 diskutil unmount disk0s1
 ```
 
-3. Close Terminal
+## Step 6: First Boot
 
----
+1. Remove USB
+2. Press **F12** → Boot internal drive
+3. Complete macOS setup
 
-## 🖥️ Phase 5: First Boot
+## Next Steps
 
-1. **Remove the USB drive**
-2. Press **F12** and boot from the internal drive
-3. OpenCore picker should now show **"macOS"**
-4. Select it and let macOS boot
-
-### Initial Setup
-
-Complete the macOS setup wizard:
-- Region and Language
-- Keyboard Layout
-- Apple ID (optional - can skip)
-- Privacy settings
-- Create computer account
-
----
-
-## 📋 Next Steps
-
-After successful first boot:
-
-1. **[Post-Install Setup](post-install.md)** - Audio, USB mapping, optimizations
-2. **[Performance Tuning](performance.md)** - Benchmarks and optimization
-3. **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
-
----
-
-## ⚠️ Common Issues on Windows
-
-| Issue | Solution |
-|-------|----------|
-| USB not booting | Check BIOS boot order, ensure UEFI enabled |
-| Disk not showing | Set SATA to AHCI in BIOS |
-| Installation freezes | Disable VT-d in BIOS, add `-v` boot arg |
-| No audio | Try layout-id 1,2,3, or 7 in config.plist |
-| Wi-Fi not detected | AR9485 needs IO80211ElCap.kext |
-
----
-
-## 📝 Alternative: Manual USB Creation
-
-If the script fails, you can manually create the USB:
-
-1. Open **Disk Management** (diskmgmt.msc)
-2. Find your USB, delete all partitions
-3. Create new GPT partition
-4. Format as FAT32
-5. Extract EFI files to the USB's EFI folder
-6. Copy com.apple.recovery.boot folder
+- **[Post-Install](post-install.md)** - Audio, USB mapping
+- **[Troubleshooting](troubleshooting.md)** - Common fixes
