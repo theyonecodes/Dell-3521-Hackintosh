@@ -36,12 +36,9 @@ sudo dd if=macos.img of=/dev/sdX bs=4M status=progress
 
 Press **F2** on boot:
 
-| Setting | Value |
-|---------|-------|
-| SATA | **AHCI** |
-| Secure Boot | **Disabled** |
-| Boot | **UEFI** |
-| VT-d | **Disabled** |
+- **Secure Boot**: Disabled
+- **SATA**: AHCI (not RAID)
+- **Boot**: UEFI
 
 Save (F10).
 

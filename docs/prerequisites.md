@@ -49,11 +49,9 @@ git clone https://github.com/acidanthera/OpenCorePkg.git
 
 Press **F2** on boot:
 
-| Setting | Value |
-|---------|-------|
-| Secure Boot | **Disabled** |
-| SATA Mode | **AHCI** |
-| Boot List | **UEFI** |
+- **Secure Boot**: Disabled
+- **SATA Mode**: AHCI (not RAID)
+- **Boot**: UEFI
 
 ## Backup
 

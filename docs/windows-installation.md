@@ -34,12 +34,9 @@ create_usb_installer.bat
 
 Press **F2** on boot:
 
-| Setting | Value |
-|---------|-------|
-| SATA | **AHCI** |
-| Secure Boot | **Disabled** |
-| Boot | **UEFI** |
-| VT-d | **Disabled** |
+- **Secure Boot**: Disabled
+- **SATA**: AHCI (not RAID)
+- **Boot**: UEFI
 
 Save (F10).
 

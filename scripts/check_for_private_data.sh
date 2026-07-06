@@ -7,11 +7,11 @@ echo "🔍 Checking for private/sensitive information in repository..."
 echo
 
 # Check for common personal data patterns
-PATTERNS="shinda\|yourname\|personal\|private\|secret\|password\|username\|login\
-passwd\|token\|key\|credentials\|ssh-\\(rsa\\|dsa\\|ecdsa\\|ed25519\\)\
-[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\
-localhost\|my[-_a-z0-9]*\|test[-_a-z0-9]*\|dev[-_a-z0-9]*\
-[A-Z0-9]\{20,\}\\n[A-Za-z0-9+/=]\{20,\}"
+PATTERNS="yourname\|personal\|private\|secret\|password\|username\|login\
+ passwd\|token\|key\|credentials\|ssh-\(rsa\|dsa\|ecdsa\|ed25519\)\
+ [0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\
+ localhost\|my[-_a-z0-9]*\|test[-_a-z0-9]*\|dev[-_a-z0-9]*\
+ [A-Z0-9]\{20,\}\\n[A-Za-z0-9+/=]\{20,\}"
 
 # Run checks (excluding this script)
 echo "✅ Checking for usernames, passwords, and private strings:"

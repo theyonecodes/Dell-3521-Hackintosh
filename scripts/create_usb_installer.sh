@@ -10,7 +10,22 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 EFI_SOURCE="$HOME/Downloads/Dell-3521-Hackintosh/Output/EFI"
-RECOVERY_SOURCE="$HOME/Downloads/OpCore/OpenCore-0.7.8-RELEASE/Utilities/macrecovery/com.apple.recovery.boot"
+
+# Find recovery image - check common locations
+RECOVERY_LOCATIONS=(
+    "$HOME/Downloads/Hackintosh/OpCore-Simplify/Results/com.apple.recovery.boot"
+    "$HOME/Downloads/Hackintosh/OpenCorePkg/Utilities/macrecovery/com.apple.recovery.boot"
+    "$HOME/Downloads/OpCore/OpenCore-*/Utilities/macrecovery/com.apple.recovery.boot"
+)
+
+# Find first existing recovery location
+RECOVERY_SOURCE=""
+for loc in "${RECOVERY_LOCATIONS[@]}"; do
+    if [ -d "$loc" ]; then
+        RECOVERY_SOURCE="$loc"
+        break
+    fi
+done
 
 echo "💾 Creating USB Installer for Dell 3521 Hackintosh"
 
@@ -21,9 +36,9 @@ if [ ! -d "$EFI_SOURCE" ]; then
     exit 1
 fi
 
-if [ ! -d "$HOME/Downloads/OpCore/OpenCore-0.7.8-RELEASE/Utilities/macrecovery/com.apple.recovery.boot" ]; then
+if [ -z "$RECOVERY_SOURCE" ]; then
     echo -e "${RED}❌ Recovery image not found${NC}"
-    echo "Run macrecovery.py first"
+    echo "Download macOS recovery using OpCore-Simplify first"
     exit 1
 fi
 
@@ -65,11 +80,11 @@ sudo umount ${USB_DEVICE}* 2>/dev/null || true
 # Create GPT
 echo "📝 Creating GPT partition table..."
 sudo sgdisk -Z /dev/${USB_DEVICE}  # Zap
-sudo sgdisk -o /dev/sdc  # New GPT
+sudo sgdisk -o /dev/${USB_DEVICE}  # New GPT
 
 # Create partition
 echo "📝 Creating EFI partition..."
-sudo sgdisk -n 1:0:0 -t 1:EF00 /dev/sdc
+sudo sgdisk -n 1:0:0 -t 1:EF00 /dev/${USB_DEVICE}
 
 # Format
 PARTITION="${USB_DEVICE}1"

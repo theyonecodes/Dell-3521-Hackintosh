@@ -43,13 +43,9 @@ After creating USB, copy `Output/EFI/` and `com.apple.recovery.boot/` to USB roo
 
 Press **F2** on boot:
 
-| Setting | Value |
-|---------|-------|
-| SATA Mode | **AHCI** |
-| Secure Boot | **Disabled** |
-| Boot List | **UEFI** |
-| Fast Boot | **Disabled** |
-| VT-d | **Disabled** |
+- **Secure Boot**: Disabled
+- **SATA Mode**: AHCI (not RAID)
+- **Boot**: UEFI
 
 Save (F10) and reboot.
 
