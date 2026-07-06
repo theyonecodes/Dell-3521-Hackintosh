@@ -4,6 +4,18 @@ macOS Big Sur 11.0 on Dell Inspiron 3521 (i5-3337U Ivy Bridge)
 
 **SMBIOS**: MacBookAir5,2 | **OpenCore**: 0.7.8
 
+## Installation Flow
+
+```mermaid
+flowchart LR
+    A[Build EFI] --> B[Create USB]
+    B --> C[BIOS Settings]
+    C --> D[Boot USB]
+    D --> E[Install macOS]
+    E --> F[Copy EFI]
+    F --> G[Done]
+```
+
 ## Hardware
 
 | Component | Device ID | Kext |
@@ -37,11 +49,11 @@ build_opencore.bat
 create_usb_installer.bat
 ```
 
-## Installation
+## Installation Steps
 
-1. Create USB (see [macos-installation.md](docs/macos-installation.md))
-2. BIOS: F2 → Disable Secure Boot, Set AHCI, UEFI
-3. Boot: F12 → Select USB
+1. Create USB (see [Installation Guide](docs/macos-installation.md))
+2. BIOS: **DEL** → Disable Secure Boot, Set AHCI, UEFI
+3. Boot: **F12** → Select USB
 4. OpenCore picker → macOS Recovery
 5. Disk Utility → Erase drive (APFS, GUID)
 6. Install macOS (40-60 min)
@@ -60,7 +72,7 @@ create_usb_installer.bat
 | [Troubleshooting](docs/troubleshooting.md) | Common fixes |
 | [FAQ](docs/faq.md) | Questions |
 
-## USB Creation Options
+## USB Creation
 
 | Method | Platform | Tool |
 |--------|----------|------|
@@ -68,15 +80,13 @@ create_usb_installer.bat
 | Rufus | Windows | [rufus.ie](https://rufus.ie/) |
 | GNOME Disks | Linux | GUI app |
 | dd | Linux/macOS | Command line |
-| BalenaEtcher | All | [balena.io](https://www.balena.io/etcher/) |
 
 ## Boot Keys
 
 | Key | Action |
 |-----|--------|
-| F2 | BIOS |
-| F12 | Boot menu |
-| OpenCore picker | Select OS |
+| **DEL** | BIOS setup |
+| **F12** | Boot menu |
 
 ## What's Working
 

@@ -4,6 +4,22 @@ Quick start steps for installing macOS Big Sur on Dell 3521.
 
 ---
 
+## Installation Flow
+
+```mermaid
+flowchart TD
+    A[Build EFI] --> B[Create USB]
+    B --> C[BIOS Settings]
+    C --> D[Boot from USB]
+    D --> E[macOS Recovery]
+    E --> F[Format Drive]
+    F --> G[Install macOS]
+    G --> H[Copy EFI]
+    H --> I[First Boot]
+```
+
+---
+
 ## Quick Start
 
 ### 1. Build EFI
