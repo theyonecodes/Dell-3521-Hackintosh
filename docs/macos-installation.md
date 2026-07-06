@@ -6,60 +6,117 @@ This guide covers creating the USB installer, BIOS configuration, macOS installa
 
 ## 💾 Phase 1: Create USB Installer
 
-### 1.1 Prepare USB Drive
+You have multiple options to create the USB installer. Choose the one that works best for you.
+
+---
+
+### Option A: Using the Script (Linux/macOS)
+
+**Recommended for Linux users with the build environment set up:**
+
+```bash
+cd ~/Downloads/Dell-3521-Hackintosh
+chmod +x scripts/create_usb_installer.sh
+./scripts/create_usb_installer.sh
+```
 
 ⚠️ **WARNING**: This will **ERASE ALL DATA** on the USB drive!
 
+The script will:
+- Show available disks with `lsblk`
+- Prompt for USB device name (e.g., `sdc`)
+- Require typing `YES` to confirm
+- Zap existing partitions, create GPT
+- Format as FAT32
+- Copy EFI and recovery files
+
+---
+
+### Option B: Using Rufus (Windows)
+
+[Rufus](https://rufus.ie/) is a fast, free USB formatter for Windows.
+
+1. Download Rufus from https://rufus.ie/
+2. Launch Rufus (portable - no install needed)
+3. Configure:
+   - **Device**: Select your USB (≥16GB)
+   - **Boot selection**: Select your macOS .iso or .img file
+   - **Partition scheme**: `GPT`
+   - **Target system**: `UEFI (non-CSM)`
+   - **File system**: `FAT32`
+4. Click **START**
+5. After completion, copy your OpenCore EFI to the USB's `EFI/` folder
+6. Copy `com.apple.recovery.boot` to USB root
+
+---
+
+### Option C: Using GNOME Disks (Linux GUI)
+
+1. Open **GNOME Disks** from your app menu
+2. Select your USB drive
+3. Click the gear icon → **Format Drive** (GPT)
+4. Click **+** to create a partition (FAT32, name: OPENCORE)
+5. Mount and copy files:
 ```bash
-# 1. Identify your USB device
-lsblk
-
-# Run BEFORE and AFTER plugging in USB to identify it
-# Example: sdc (14.8G) is the USB
-
-# 2. UNMOUNT any auto-mounted partitions
-sudo umount /dev/sdc* 2>/dev/null || true
-
-# Create fresh GPT partition table
-sudo sgdisk -Z /dev/sdc   # Zap existing partitions
-sudo sgdisk -o /dev/sdc   # Create new empty GPT
-
-# Create single EFI partition
-sudo sgdisk -n 1:0:0 -t 1:EF00 /dev/sdc
-
-# Format as FAT32
-sudo mkfs.fat -F32 -s 1 -n "OPENCORE" /dev/sdc1
+sudo mount /dev/sdc1 /mnt/usb
+sudo cp -r Output/EFI/* /mnt/usb/EFI/
+sudo cp -r com.apple.recovery.boot /mnt/usb/
+sync && sudo umount /mnt/usb
 ```
 
-### 4.2 Populate USB Drive
+---
 
+### Option D: Manual Command Line (All Platforms)
+
+**Linux:**
 ```bash
-# Mount USB
+# Identify USB
+lsblk
+
+# Unmount
+sudo umount /dev/sdc*
+
+# Create GPT and partition
+sudo sgdisk -Z /dev/sdc
+sudo sgdisk -o /dev/sdc
+sudo sgdisk -n 1:0:0 -t 1:EF00 /dev/sdc
+
+# Format
+sudo mkfs.fat -F32 -s 1 -n "OPENCORE" /dev/sdc1
+
+# Mount and copy
 mkdir -p /mnt/usb
 sudo mount /dev/sdc1 /mnt/usb
-
-# Create directories
-sudo mkdir -p /mnt/usb/EFI
-
-# Copy OpenCore EFI
-sudo cp -r Results/EFI/* /mnt/usb/EFI/
-
-# Copy macOS Recovery
+sudo cp -r Output/EFI/* /mnt/usb/EFI/
 sudo cp -r com.apple.recovery.boot /mnt/usb/
+sync && sudo umount /mnt/usb
+```
 
-# Final structure:
-# /mnt/usb/
-# ├── EFI/
-# │   ├── BOOT/
-# │   └── OC/
-# └── com.apple.recovery.boot/
-#     ├── BaseSystem.chunklist
-#     └── BaseSystem.dmg
+**Windows (Command Prompt as Admin):**
+```cmd
+diskpart
+list disk
+select disk X
+clean
+convert gpt
+create partition primary size=500
+format fs=fat32 quick label=OPENCORE
+assign letter=Z
+exit
 
-# Sync and unmount
-sync
-sudo umount /mnt/usb
-rmdir /mnt/usb
+xcopy /E /H /Y "Output\EFI\*" Z:\EFI\
+xcopy /E /H /Y "com.apple.recovery.boot\" Z:\
+```
+
+**macOS:**
+```bash
+# Use Disk Utility or command line
+diskutil list
+diskutil eraseDisk FAT32 OPENCORE /dev/diskX
+sudo mkdir -p /Volumes/OPENCORE
+sudo mount -t msdos /dev/diskXs1 /Volumes/OPENCORE
+cp -r ~/Downloads/Dell-3521-Hackintosh/Output/EFI/* /Volumes/OPENCORE/EFI/
+cp -r ~/Downloads/OpCore/OpenCore-*/Utilities/macrecovery/com.apple.recovery.boot /Volumes/OPENCORE/
 ```
 
 ---

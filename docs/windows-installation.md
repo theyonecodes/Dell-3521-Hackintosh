@@ -36,6 +36,8 @@ Follow the on-screen instructions in OpCore-Simplify:
 
 ### Step 1.3: Create USB Installer
 
+**Option A: Using the Script (Recommended)**
+
 ```cmd
 create_usb_installer.bat
 ```
@@ -50,6 +52,59 @@ The script will:
 - Clean and format USB as GPT with FAT32 EFI partition
 - Copy OpenCore EFI files
 - Copy macOS recovery image
+
+---
+
+**Option B: Using Rufus (Windows Utility)**
+
+[Rufus](https://rufus.ie/) is a free, open-source USB formatting tool that works great for creating Hackintosh USB installers on Windows.
+
+### Steps:
+
+1. **Download Rufus** from https://rufus.ie/
+
+2. **Launch Rufus** (no installation needed - portable app)
+
+3. **Configure Rufus**:
+   - **Device**: Select your USB drive (≥16GB)
+   - **Boot selection**: Click `SELECT` and choose your macOS Big Sur .iso or .img file
+   - **Partition scheme**: `GPT` (for UEFI)
+   - **Target system**: `UEFI (non-CSM)`
+   - **File system**: `FAT32`
+   - **Cluster size**: Default
+
+4. **Click START** and wait for Rufus to create the bootable USB
+
+5. **After Rufus completes**, manually copy the OpenCore EFI folder:
+   - Open File Explorer
+   - Navigate to USB drive's `EFI` folder
+   - Copy your built EFI from `Output\EFI\*` to the USB's `EFI\` folder
+   - Copy `com.apple.recovery.boot` folder to the USB root
+
+6. **Final USB structure** should be:
+   ```
+   USB Drive (E:)/
+   ├── EFI/
+   │   ├── BOOT/
+   │   └── OC/
+   └── com.apple.recovery.boot/
+       ├── BaseSystem.chunklist
+       └── BaseSystem.dmg
+   ```
+
+**Note**: If using a macOS recovery image from OpCore-Simplify, select "Non-bootable" in Rufus and manually populate the files instead.
+
+---
+
+**Option C: Manual Method (Disk Management)**
+
+If you prefer manual setup:
+
+1. Open **Disk Management** (`diskmgmt.msc`)
+2. Find your USB, delete all partitions
+3. Create new GPT partition
+4. Format as FAT32 with label "OPENCORE"
+5. Copy EFI and recovery files manually
 
 ---
 

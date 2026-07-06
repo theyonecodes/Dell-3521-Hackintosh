@@ -38,6 +38,8 @@ Follow the OpCore-Simplify menu:
 
 ### Step 1.3: Create USB Installer
 
+**Option A: Using the Script (Recommended)**
+
 ```bash
 chmod +x scripts/create_usb_installer.sh
 ./scripts/create_usb_installer.sh
@@ -52,6 +54,104 @@ The script will:
 - Zap existing partitions, create GPT
 - Format as FAT32
 - Copy EFI and recovery files
+
+---
+
+**Option B: Using GNOME Disks (GUI Method)**
+
+For users who prefer a graphical interface:
+
+1. Open **GNOME Disks** (or `gnome-disks`) from your application menu
+
+2. Select your USB drive from the left panel
+
+3. Click the **gear icon** → **Format Drive**
+   - Partitioning: `GPT`
+   - Click **Format**
+
+4. Click the **+** button to create a partition:
+   - Size: Use full capacity
+   - Type: `FAT32`
+   - Name: `OPENCORE`
+
+5. Click **Create**
+
+6. Mount the partition and copy files:
+   ```bash
+   # Find the partition (e.g., /dev/sdc1)
+   lsblk
+   
+   # Mount
+   mkdir -p /mnt/usb
+   sudo mount /dev/sdc1 /mnt/usb
+   
+   # Copy EFI
+   sudo cp -r ~/Downloads/Dell-3521-Hackintosh/Output/EFI/* /mnt/usb/EFI/
+   
+   # Copy recovery
+   sudo cp -r ~/Downloads/OpCore/OpenCore-0.7.8-RELEASE/Utilities/macrecovery/com.apple.recovery.boot /mnt/usb/
+   
+   # Sync and unmount
+   sync
+   sudo umount /mnt/usb
+   ```
+
+---
+
+**Option C: Using dd Command (Manual)**
+
+For advanced users comfortable with command-line:
+
+```bash
+# Identify your USB device
+lsblk
+
+# Unmount all partitions on the USB
+sudo umount /dev/sdc*
+
+# Create GPT partition table
+sudo sgdisk -Z /dev/sdc     # Zap existing
+sudo sgdisk -o /dev/sdc     # New GPT
+
+# Create EFI partition (占据全部空间)
+sudo sgdisk -n 1:0:0 -t 1:EF00 /dev/sdc
+
+# Wait for partition to be created
+sleep 2
+
+# Format as FAT32
+sudo mkfs.fat -F32 -s 1 -n "OPENCORE" /dev/sdc1
+
+# Mount
+mkdir -p /mnt/usb
+sudo mount /dev/sdc1 /mnt/usb
+
+# Copy files
+sudo cp -r ~/Downloads/Dell-3521-Hackintosh/Output/EFI/* /mnt/usb/EFI/
+sudo cp -r ~/Downloads/OpCore/OpenCore-0.7.8-RELEASE/Utilities/macrecovery/com.apple.recovery.boot /mnt/usb/
+
+# Verify
+ls -la /mnt/usb/
+ls -la /mnt/usb/EFI/
+ls -la /mnt/usb/com.apple.recovery.boot/
+
+# Unmount
+sync
+sudo umount /mnt/usb
+rmdir /mnt/usb
+```
+
+---
+
+**Option D: Using balenaEtcher (Cross-Platform GUI)**
+
+If you have an existing macOS recovery image:
+
+1. Download [balenaEtcher](https://www.balena.io/etcher/)
+2. Select your macOS .img or .iso file
+3. Select your USB drive
+4. Click **Flash**
+5. After flashing, mount the USB and update the EFI folder as shown in Option B/C above
 
 ---
 
