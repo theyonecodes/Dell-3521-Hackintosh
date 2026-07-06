@@ -1,65 +1,86 @@
 # Prerequisites
 
-## Hardware Needed
+What you need before starting.
+
+---
+
+## Hardware
 
 | Item | Requirement |
 |------|-------------|
-| Laptop | Dell Inspiron 3521 (or similar Ivy Bridge) |
-| CPU | Intel i5-3337U (Ivy Bridge) |
+| Laptop | Dell Inspiron 3521 (i5-3337U) |
 | RAM | 4GB minimum, 8GB recommended |
 | Storage | 120GB+ SSD |
 | USB | 16GB+ flash drive |
 
-## Software Needed
+---
 
-| Tool | Purpose |
-|------|---------|
-| [OpCore-Simplify](https://github.com/lzhoang2801/OpCore-Simplify) | Build EFI |
-| [OpenCorePkg](https://github.com/acidanthera/OpenCorePkg) | Bootloader + macrecovery |
-| [ProperTree](https://github.com/corpnewt/ProperTree) | Edit config.plist |
-| [Rufus](https://rufus.ie/) (Windows) | Create USB |
-| [BalenaEtcher](https://www.balena.io/etcher/) (Linux) | Create USB |
+## Tools to Download
 
-## Download Tools
+| Tool | Download | Purpose |
+|------|----------|---------|
+| OpCore-Simplify | [GitHub](https://github.com/lzhoang2801/OpCore-Simplify) | Build EFI |
+| OpenCorePkg | [GitHub](https://github.com/acidanthera/OpenCorePkg) | macrecovery |
+| ProperTree | [GitHub](https://github.com/corpnewt/ProperTree) | Edit config.plist |
+| Rufus | [rufus.ie](https://rufus.ie/) | Create USB (Windows) |
 
-**Clone repos to this structure:**
+### Folder Structure
 
-```bash
+```
 ~/Downloads/Hackintosh/
 ├── OpCore-Simplify/      # From lzhoang2801/OpCore-Simplify
 ├── OpenCorePkg/          # From acidanthera/OpenCorePkg
 └── Dell-3521-Hackintosh/ # This repo
 ```
 
-**Commands:**
+### Clone Commands
+
 ```bash
 mkdir -p ~/Downloads/Hackintosh
 cd ~/Downloads/Hackintosh
 
-# Clone OpCore-Simplify
 git clone https://github.com/lzhoang2801/OpCore-Simplify.git
-
-# Clone OpenCorePkg (for macrecovery.py)
 git clone https://github.com/acidanthera/OpenCorePkg.git
+git clone https://github.com/theyonecodes/Dell-3521-Hackintosh.git
 ```
 
-**Windows:** Download ZIP from GitHub and extract to `Downloads\Hackintosh\`
+Windows: Download ZIP files from GitHub and extract to `Downloads\Hackintosh\`
+
+---
 
 ## BIOS Settings
 
-Press **F2** on boot:
+Press **DEL** on boot:
 
 - **Secure Boot**: Disabled
 - **SATA Mode**: AHCI (not RAID)
 - **Boot**: UEFI
 
-## Backup
+---
 
-- Back up important data before installing
-- Export BIOS settings
-- Create bootable recovery USB for your existing OS
+## What Gets Installed
+
+| Component | Works with |
+|-----------|-----------|
+| CPU i5-3337U | MacBookAir5,2 SMBIOS |
+| HD 4000 GPU | WhateverGreen |
+| AR9485 Wi-Fi | IO80211ElCap |
+| AR9462 Bluetooth | Ath3kBT |
+| RTL8136 Ethernet | RealtekRTL8111 |
+| Intel HD Audio | AppleALC |
+
+---
+
+## Before You Start
+
+1. **Backup** important data
+2. **BIOS settings** exported (if possible)
+3. **Recovery USB** for existing OS (in case needed)
+4. **60-90 minutes** for installation
+
+---
 
 ## Next Steps
 
-1. **[Hardware Validation](hardware-validation.md)** - Verify hardware
+1. **[Hardware Validation](hardware-validation.md)** - Check your hardware
 2. **[EFI Configuration](efi-configuration.md)** - Build EFI
