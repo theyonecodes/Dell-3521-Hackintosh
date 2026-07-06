@@ -15,7 +15,7 @@ This repository provides a **complete, step-by-step guide** to install **macOS B
 
 ### 📸 What to Expect
 
-![macOS Big Sur on Dell 3521](https://raw.githubusercontent.com/user-attachments/assets/dell-3521-bigsur.jpg)
+![macOS Big Sur on Dell 3521](https://wallpapercave.com/wp/wp6761051.jpg)
 
 *macOS Big Sur running smoothly on the Dell 3521*
 
