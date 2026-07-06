@@ -1,0 +1,113 @@
+# 📜 License
+
+## MIT License
+
+Copyright (c) 2024 Dell 3521 Hackintosh Project
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## ⚖️ Legal Disclaimer
+
+### ⚠️ Important Legal Notice
+
+This project is for **educational and personal use only**. 
+
+**Installing macOS on non-Apple hardware violates Apple's End User License Agreement (EULA).** 
+
+> Apple's macOS Software License Agreement states: "The grants set forth in this License do not permit you to install, use or run the Apple Software on any non-Apple-branded computer."
+
+### 📋 What This Means
+
+- ✅ **Personal Use**: Using this guide for personal learning/experimentation is generally tolerated
+- ❌ **Commercial Use**: Using this for commercial purposes violates Apple's EULA
+- ❌ **Distribution**: Distributing pre-built macOS installers with EFI violates copyright
+- ✅ **Educational**: Learning how bootloaders and macOS work is educational
+
+### 🛡️ What We Provide
+
+- ✅ OpenCore configuration **methodology** and **process**
+- ✅ Hardware-specific **kext selection guidance**
+- ✅ **Installation methodology** documentation
+- ✅ Troubleshooting **methodology**
+- ❌ Pre-built EFI folders with serial numbers
+- ❌ Pre-made macOS installers
+- ❌ Serial numbers, MLB, or ROM values
+
+### 🛡️ Your Responsibilities
+
+1. **Generate your own** SMBIOS data (SMBIOS, MLB, ROM, Serial)
+2. **Create your own** macOS installer legally
+3. **Use only on hardware you own**
+4. **Do not distribute** pre-configured EFIs with serials
+4. **Respect Apple's intellectual property**
+
+### 📜 Third-Party Licenses
+
+This project uses several open-source projects, each with their own licenses:
+
+| Project | License | Link |
+|---------|---------|------|
+| OpenCore | BSD-3-Clause | [GitHub](https://github.com/acidanthera/OpenCorePkg) |
+| Lilu | BSD-3-Clause | [GitHub](https://github.com/acidanthera/Lilu) |
+| VirtualSMC | BSD-3-Clause | [GitHub](https://github.com/acidanthera/VirtualSMC) |
+| WhateverGreen | BSD-3-Clause | [GitHub](https://github.com/acidanthera/WhateverGreen) |
+| AppleALC | BSD-3-Clause | [GitHub](https://github.com/acidanthera/AppleALC) |
+| USBToolBox | BSD-3-Clause | [GitHub](https://github.com/USBToolBox/tool) |
+| ProperTree | BSD-3-Clause | [GitHub](https://github.com/corpnewt/ProperTree) |
+| USBToolBox | BSD-3-Clause | [GitHub](https://github.com/USBToolBox/tool) |
+| OpenCore Simplify | MIT | [GitHub](https://github.com/lzhoang2801/OpCore-Simplify) |
+
+---
+
+## 📜 Third-Party Notices
+
+### Apple Software
+
+macOS, macOS Recovery, and related Apple software are copyrighted by Apple Inc. All rights reserved. Use of Apple software is subject to Apple's EULA.
+
+### OpenCore & Kexts
+
+OpenCore, Lilu, VirtualSMC, WhateverGreen, AppleALC, and related kexts are copyrighted by their respective authors (primarily Acidanthera team) and licensed under BSD-3-Clause.
+
+### OpenCore Simplify
+
+OpenCore Simplify is copyrighted by lzhoang2801 and licensed under MIT License.
+
+---
+
+## 🔒 Privacy & Security
+
+This repository **does not collect, store, or transmit** any personal data, hardware identifiers, or system information.
+
+- No telemetry
+- No analytics
+- No tracking
+- No external connections except to official GitHub/Apple CDNs for downloads
+
+---
+
+## 📞 Legal Contact
+
+For legal inquiries regarding this repository, please open a GitHub Issue with the label "legal".
+
+---
+
+*Last Updated: July 2024*
