@@ -15,24 +15,35 @@
 | Tool | Purpose |
 |------|---------|
 | [OpCore-Simplify](https://github.com/lzhoang2801/OpCore-Simplify) | Build EFI |
-| [OpenCorePkg](https://github.com/acidanthera/OpenCorePkg) | Bootloader |
+| [OpenCorePkg](https://github.com/acidanthera/OpenCorePkg) | Bootloader + macrecovery |
 | [ProperTree](https://github.com/corpnewt/ProperTree) | Edit config.plist |
 | [Rufus](https://rufus.ie/) (Windows) | Create USB |
 | [BalenaEtcher](https://www.balena.io/etcher/) (Linux) | Create USB |
 
-## Quick Setup
+## Download Tools
 
-**Linux:**
+**Clone repos to this structure:**
+
 ```bash
-git clone https://github.com/lzhoang2801/OpCore-Simplify.git ~/Hackintosh/OpCore-Simplify
-cd ~/Hackintosh/OpCore-Simplify
-./OpCore-Simplify.py
+~/Downloads/Hackintosh/
+├── OpCore-Simplify/      # From lzhoang2801/OpCore-Simplify
+├── OpenCorePkg/          # From acidanthera/OpenCorePkg
+└── Dell-3521-Hackintosh/ # This repo
 ```
 
-**Windows:**
-1. Download OpCore-Simplify from GitHub
-2. Extract to `Downloads\Hackintosh\`
-3. Run `OpCore-Simplify.bat`
+**Commands:**
+```bash
+mkdir -p ~/Downloads/Hackintosh
+cd ~/Downloads/Hackintosh
+
+# Clone OpCore-Simplify
+git clone https://github.com/lzhoang2801/OpCore-Simplify.git
+
+# Clone OpenCorePkg (for macrecovery.py)
+git clone https://github.com/acidanthera/OpenCorePkg.git
+```
+
+**Windows:** Download ZIP from GitHub and extract to `Downloads\Hackintosh\`
 
 ## BIOS Settings
 
