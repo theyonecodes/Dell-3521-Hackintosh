@@ -182,6 +182,43 @@ See [Troubleshooting Guide](docs/troubleshooting.md) for more fixes.
 - [Dortania Discord](https://discord.gg/Wxam8aH)
 - [Acidanthera GitHub](https://github.com/acidanthera)
 
+## 🔐 iMessage/FaceTime (Post-Install)
+
+**Required before first login:**
+```bash
+# Generate unique MLB and ROM in config.plist
+# SMBIOS → Generic:
+# - SystemSerialNumber: [Unique 12-char]
+# - SystemUUID: [Unique UUID]
+# - MLB: [Unique 18-char]
+# - ROM: [Your WiFi MAC or custom]
+
+# Then:
+sudo nvram boot-args="-v"
+sudo rm -rf /Library/Preferences/com.apple.iCloud*
+# Reboot and try signing in
+```
+
+## 🔄 System Updates
+
+**Before updating macOS:**
+1. Update OpenCore to latest version
+2. Backup EFI folder
+3. Disable non-Apple kexts in config.plist
+
+**Big Sur Update Notes:**
+- Kernel version 20.99.99 requires kext rebuild
+- USB mapping may need refresh after major updates
+
+## 📦 Recovery Partition
+
+**Create recovery after installation:**
+```bash
+# Download Recovery Update from Apple
+# Use OpenCore's builtin recovery support
+# Or: createinstallmedia method
+```
+
 ---
 
 **Note**: This is a personal project. Use at your own risk. Backups recommended before installation.
