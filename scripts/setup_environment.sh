@@ -6,11 +6,25 @@ set -e
 
 echo "🔧 Setting up Hackintosh build environment..."
 
-# Colors for output
+# Verify required directories exist
+if [ ! -d "$HOME/Downloads/Hackintosh/OpCore-Simplify" ]; then
+    echo "❌ OpCore-Simplify not found at $HOME/Downloads/Hackintosh/OpCore-Simplify"
+    echo "Create symlinks or move folders from Downloads/OpCore-Simplify-main/ etc."
+    exit 1
+fi
+
+if [ ! -d "$HOME/Downloads/Hackintosh/OpenCorePkg" ]; then
+    echo "❌ OpenCorePkg not found at $HOME/Downloads/Hackintosh/OpenCorePkg"
+    exit 1
+fi
+
+echo "✅ Found required tools in ~/Downloads/Hackintosh/"
+
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 # Detect OS
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -73,4 +87,5 @@ echo "Next steps:"
 echo "1. cd ~/Downloads/Dell-3521-Hackintosh"
 echo "2. Run ./scripts/create_hardware_report.sh"
 echo "3. Run ./scripts/build_opencore.sh"
-echo "4. Follow docs/hardware-validation.md"
+echo "4. Follow docs/macos-installation.md"
+echo "See docs/prerequisites.md for detailed instructions."

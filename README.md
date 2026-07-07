@@ -98,6 +98,24 @@ create_usb_installer.bat
 - Sleep/Wake
 - USB (after mapping)
 
+## OpenCore Entry Name Fix
+
+If you see "NO NAME" in OpenCore picker, add this to `config.plist`:
+
+```xml
+<key>Entries</key>
+<array>
+    <dict>
+        <key>Path</key>
+        <string>com.apple.recovery.boot/BaseSystem.dmg</string>
+        <key>Enabled</key>
+        <true/>
+        <key>FullTitle</key>
+        <string>macOS Big Sur Recovery</string>
+    </dict>
+</array>
+```
+
 ## Support
 
 - [r/hackintosh](https://reddit.com/r/hackintosh/)

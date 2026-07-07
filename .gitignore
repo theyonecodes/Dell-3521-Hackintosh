@@ -64,5 +64,11 @@ EFI/OC/Tools/*
 EFI/OC/Resources/*
 !EFI/OC/Resources/.gitkeep
 
+# OpenCorePkg (downloaded)
+OpenCorePkg/
+
+# OCK_Files (kext sources)
+OCK_Files/
+
 # Keep sample configs
 !config_examples/
