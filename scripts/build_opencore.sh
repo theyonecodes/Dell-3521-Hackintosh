@@ -66,7 +66,36 @@ fi
 echo ""
 echo "✅ EFI build complete!"
 echo "Output: $OUTPUT_DIR/EFI"
+
+# Download macOS recovery image (Big Sur 11.0)
+echo ""
+echo "🔽 Downloading macOS Big Sur recovery image..."
+
+OPENCORE_PKG="$HOME/Downloads/Hackintosh/OpenCorePkg"
+
+if [ -d "$OPENCORE_PKG" ]; then
+    cd "$OPENCORE_PKG/Utilities/macrecovery"
+    
+    # Download Big Sur recovery
+    python3 macrecovery.py -b Mac-2BD1B31983FE1663 -m 00000000000000000 download
+    
+    # Copy to Output
+    mkdir -p "$OUTPUT_DIR/com.apple.recovery.boot"
+    if [ -d "com.apple.recovery.boot" ]; then
+        cp -r "com.apple.recovery.boot"/* "$OUTPUT_DIR/com.apple.recovery.boot/"
+        echo "✅ Recovery image downloaded to $OUTPUT_DIR/com.apple.recovery.boot"
+    else
+        echo "⚠️ Create USB: Copy recovery manually from $OPENCORE_PKG/Utilities/macrecovery/com.apple.recovery.boot"
+    fi
+else
+    echo "⚠️ Download macOS recovery manually:"
+    echo "1. cd ~/Downloads/Hackintosh/OpenCorePkg/Utilities/macrecovery"
+    echo "2. python3 macrecovery.py -b Mac-2BD1B31983FE1663 -m 00000000000000000 download"
+    echo "3. Copy com.apple.recovery.boot to USB"
+fi
+
 echo ""
 echo "Next steps:"
 echo "1. Verify EFI: ls -la $OUTPUT_DIR/EFI/OC/Kexts/"
-echo "2. Proceed to USB creation: docs/macos-installation.md"
+echo "2. Download confirmed: ls -la $OUTPUT_DIR/com.apple.recovery.boot/"
+echo "3. Create USB installer: docs/macos-installation.md"

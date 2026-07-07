@@ -102,10 +102,37 @@ echo EFI Build Complete
 echo ============================================
 echo.
 echo Output: %OUTPUT_DIR%\EFI
+
+echo 🔽 Downloading macOS Big Sur recovery image...
+echo.
+
+set OPENCORE_PKG=%USERPROFILE%\Downloads\Hackintosh\OpenCorePkg
+
+if exist "%OPENCORE_PKG%" (
+    cd /d "%OPENCORE_PKG%\Utilities\macrecovery"
+    
+    python macrecovery.py -b Mac-2BD1B31983FE1663 -m 00000000000000000 download
+    
+    if exist "com.apple.recovery.boot" (
+        xcopy /E /H /Y "com.apple.recovery.boot\*" "%OUTPUT_DIR%\com.apple.recovery.boot\" >nul
+        echo ✅ Recovery image downloaded to %OUTPUT_DIR%\com.apple.recovery.boot
+    ) else (
+        echo ⚠️ Create USB: Copy recovery manually from:
+        echo    %OPENCORE_PKG%\Utilities\macrecovery\com.apple.recovery.boot
+    )
+) else (
+    echo ⚠️ Download macOS recovery manually:
+    echo.
+    echo 1. cd %USERPROFILE%\Downloads\Hackintosh\OpenCorePkg\Utilities\macrecovery
+    echo 2. python macrecovery.py -b Mac-2BD1B31983FE1663 -m 00000000000000000 download
+    echo 3. Copy com.apple.recovery.boot to USB
+)
+
 echo.
 echo Next steps:
 echo 1. Verify EFI: dir %OUTPUT_DIR%\EFI\OC\Kexts\
-echo 2. Proceed to USB creation: create_usb_installer.bat
+echo 2. Download confirmed: dir %OUTPUT_DIR%\com.apple.recovery.boot\
+echo 3. Create USB installer: create_usb_installer.bat
 echo.
 pause
 exit /b 0
