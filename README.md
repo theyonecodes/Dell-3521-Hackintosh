@@ -110,6 +110,35 @@ sudo cp -r /Volumes/NO\ NAME/EFI /Volumes/EFI/
 sudo diskutil unmount disk0s1
 ```
 
+## 🍎 Post-Installation (First macOS Session)
+
+**Critical fixes to apply:**
+
+1. **Audio Fix**
+   - System Preferences → Sound → Output tab
+   - Try different layout-IDs by editing `config.plist`:
+   - `<key>layout-id</key><integer>1</integer>` (or 2, 3, 7)
+
+2. **Bluetooth Fix (AR9462)**
+   ```bash
+   sudo kextcache -i /
+   # Reboot
+   ```
+
+3. **Brightness Keys**
+   - Fn+F5/F6 should work
+   - If not: System Preferences → Displays → Brightness slider
+
+4. **USB Mapping (Optional)**
+   - If USB 3.0 ports show slow speeds:
+   - Use USBToolBox from macOS
+   - Create `UTBMap.kext`
+   - Replace `UTBDefault.kext` in `EFI/OC/Kexts/`
+
+5. **Sleep/Wake Fix (Optional)**
+   - If laptop doesn't sleep properly:
+   - Add `SSDT-PTSWAK.aml` or `SSDT-GPRW.aml` to `EFI/OC/ACPI/`
+
 ## 🛠️ Post-Install
 
 See [Post-Install Guide](docs/post-install.md) for:
