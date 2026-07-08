@@ -1,8 +1,8 @@
 # Dell 3521 Hackintosh
 
-macOS Big Sur 11.0 on Dell Inspiron 3521 (i5-3337U Ivy Bridge)
+macOS Big Sur 11.x on Dell Inspiron 3521 (i5-3337U Ivy Bridge, HD 4000, 1366x768)
 
-**SMBIOS**: MacBookAir5,2 | **OpenCore**: 0.7.8 | **Metal**: Supported
+**SMBIOS**: MacBookPro10,2 | **OpenCore**: 1.0.5+ | **Metal**: Supported | **Big Sur**: 11.x
 
 ## ⚡ Quick Start
 
@@ -89,11 +89,22 @@ EFI/
 
 ## ⚙️ Device Properties
 
-GPU `PciRoot(0x0)/Pci(0x00,0x02)` - framebuffer injected:
-```xml
-<key>AAPL,ig-platform-id</key>
-<data>CgBmAQ==</data>  <!-- 0x01660006 -->
-```
+GPU `PciRoot(0x0)/Pci(0x2,0x0)` - framebuffer injected:
+
+| Property | Value | Description |
+|----------|-------|-------------|
+| AAPL,ig-platform-id | `0x01660004` | HD 4000 mobile (LVDS+VGA+HDMI) |
+| framebuffer-portcount | 2 | Dell 3521 has 2 video outputs |
+| framebuffer-pipecount | 2 | 2 display pipes |
+| framebuffer-memorycount | 2 | 2 memory entries |
+| framebuffer-stolenmem | 64 MB | Matches BIOS DVMT allocation |
+| framebuffer-unifiedmem | 1536 MB | Reported VRAM |
+| framebuffer-con0-alldata | LVDS connector | Internal display patch |
+| framebuffer-con1-alldata | VGA connector | External VGA patch |
+| enable-hdmi20 | 1 | Enable HDMI 2.0 output |
+
+> **Key fix**: portcount must be 2 (not 3). Dell 3521 has LVDS + VGA only.
+> unifiedmem must be 1536 MB (not bytes). stolenmem must be 64 MB for locked DVMT BIOS.
 
 ## 🔁 First Boot Setup
 
@@ -169,6 +180,7 @@ See [Troubleshooting Guide](docs/troubleshooting.md) for more fixes.
 
 | Guide | Purpose |
 |-------|---------|
+| **[Full Installation Guide](docs/full-installation-guide.md)** | **Complete step-by-step guide (recommended)** |
 | [Prerequisites](docs/prerequisites.md) | Tools & requirements |
 | [Installation](docs/macos-installation.md) | USB creation & install |
 | [Post-Install](docs/post-install.md) | Fixes after macOS |
