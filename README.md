@@ -1,236 +1,443 @@
-# Dell 3521 Hackintosh
+# Hackintosh macOS Big Sur on Dell Inspiron 3521 — Complete Guide
 
-macOS Big Sur 11.x on Dell Inspiron 3521 (i5-3337U Ivy Bridge, HD 4000, 1366x768)
+This document details the **exact process** that successfully installed macOS Big Sur 11.7.10 on a Dell Inspiron 3521 using OpenCore. Everything here was tested and verified to work.
 
-**SMBIOS**: MacBookPro10,2 | **OpenCore**: 1.0.5+ | **Metal**: Supported | **Big Sur**: 11.x
+---
 
-## ⚡ Quick Start
+## Table of Contents
+1. [Hardware Specifications](#1-hardware-specifications)
+2. [What You Need](#2-what-you-need)
+3. [Why It Works — Critical Fixes](#3-why-it-works--critical-fixes)
+4. [Step-by-Step Installation](#4-step-by-step-installation)
+5. [ESP Folder Structure](#5-esp-folder-structure)
+6. [PlatformInfo](#6-platforminfo)
+7. [Known Issues & Workarounds](#7-known-issues--workarounds)
+8. [Post-Install](#8-post-install)
+9. [Troubleshooting](#9-troubleshooting)
 
-### Prerequisites
-- USB drive (16GB+) with FAT32 partition
-- macOS recovery download (handled by scripts)
-- Admin access on target machine
+---
 
-### Build & Create USB
+## 1. Hardware Specifications
 
-**Linux:**
-```bash
-git clone https://github.com/theyonecodes/Dell-3521-Hackintosh.git
-cd Dell-3521-Hackintosh
-chmod +x scripts/*.sh
-./scripts/setup_environment.sh
-./scripts/create_hardware_report.sh
-./scripts/build_opencore.sh
-./scripts/create_usb_installer.sh --force
+| Component | Model |
+|-----------|-------|
+| Laptop | Dell Inspiron 3521 |
+| CPU | Intel Core i5-3337U (Ivy Bridge, 3rd Gen) |
+| EFI Firmware | IA32 (32-bit) — **NOT x86_64** |
+| Graphics | Intel HD Graphics 4000 |
+| Audio | Realtek ALC282 |
+| WiFi | Qualcomm Atheros AR9485 |
+| USB | Kingston DataTraveler 16GB |
+
+### Critical Hardware Detail
+> **The Dell 3521 uses a 32-bit (IA32) EFI.**
+> This means `BOOTx64.EFI` / `OpenCore.efi` will NOT work.
+> You MUST use `BOOTIA32.EFI`.
+
+---
+
+## 2. What You Need
+
+| Item | Details |
+|------|---------|
+| OpenCore | **1.0.5-RELEASE** — download the IA32 build from GitHub |
+| macOS Recovery | Big Sur 11.7.10 `BaseSystem.dmg` (637 MB) |
+| USB Drive | Any FAT32-formatted USB (16GB+ recommended) |
+| Tools | `gibMacOS` (to download recovery), `ProperTree` (to edit config.plist) |
+| Config.plist | Use the **Ivy Bridge** template from Dortania's guide |
+
+---
+
+## 3. Why It Works — Critical Fixes
+
+These are the **non-negotiable** config.plist changes that made it boot. Skipping any one of these will cause boot loops or kernel panics.
+
+### 3.1 Ivy Bridge CPU Power Management
+```xml
+<key>Kernel</key>
+<dict>
+    <key>Quirks</key>
+    <dict>
+        <key>AppleCpuPmCfgLock</key>
+        <true/>
+        <key>DummyPowerManagement</key>
+        <true/>
+    </dict>
+</dict>
 ```
+**Why:** Ivy Bridge laptops have locked MSR 0xE2 registers. `AppleCpuPmCfgLock` allows macOS to manage the CPU without needing to unlock BIOS. `DummyPowerManagement` prevents kernel panics from AppleIntelCPUPowerManagement on locked firmware.
 
-**Windows:**
-```cmd
-git clone https://github.com/theyonecodes/Dell-3521-Hackintosh.git
-cd Dell-3521-Hackintosh\scripts\windows
-setup_environment.bat
-create_hardware_report.bat
-build_opencore.bat
-create_usb_installer.bat
+### 3.2 IgnoreInvalidFlexRatio
+```xml
+<key>UEFI</key>
+<dict>
+    <key>Quirks</key>
+    <dict>
+        <key>IgnoreInvalidFlexRatio</key>
+        <true/>
+    </dict>
+</dict>
 ```
+**Why:** Fixes a BIOS bug on some Ivy Bridge boards where the flex ratio register contains invalid values, causing early boot failures.
 
-## 💻 Hardware Compatibility
-
-| Component | Device ID | Status | Notes |
-|-----------|-----------|--------|-------|
-| CPU | i5-3337U (2C/4T) | ✅ Working | Ivy Bridge ULV |
-| GPU | HD 4000 (8086-0166) | ✅ Working | QE/CI via WhateverGreen |
-| Wi-Fi | AR9485 (168C-0036) | ✅ Working | IO80211ElCap |
-| Bluetooth | AR9462 (0CF3-0036) | ✅ Working | Ath3kBT |
-| Ethernet | RTL8111 (10EC-8136) | ✅ Working | RealtekRTL8111 |
-| Audio | HD Audio (8086-1E20) | ✅ Working | Layout 1,2,3,7 |
-| Battery | SMART Battery | ✅ Working | SMCBatteryManager |
-
-## 🔧 BIOS Settings (Dell 3521)
-
-1. **Press F2** at boot for BIOS Setup
-2. **Disable** these options:
-   - Secure Boot
-   - Intel Fast Boot
-   - Computrace
-3. **Enable** these options:
-   - SATA Operation → AHCI
-   - UEFI Boot → Enabled
-4. **Save** and exit (**F10**)
-
-## 🖥️ Boot Process
-
-1. **Insert USB** → Power on
-2. **Press F12** for boot menu
-3. **Select USB drive** (shows as "OpenCore")
-4. **OpenCore Picker** appears → Select "macOS Big Sur Recovery"
-5. **macOS Utilities** → Select utilities menu
-6. **Disk Utility** → Erase internal drive:
-   - Name: "Macintosh HD"
-   - Format: "APFS"
-   - Scheme: "GUID Partition Map"
-7. **Install macOS** → Follow installer (40-60 min)
-8. **Before first reboot**: Copy EFI from USB to internal drive
-
-## 📁 EFI Structure
-
+### 3.3 ACPI — Remove CPU Power Tables
+```xml
+<key>ACPI</key>
+<dict>
+    <key>Delete</key>
+    <array>
+        <dict>
+            <key>TableSignature</key>
+            <data>
+                Q1BQVA==
+            </data>
+        </dict>
+        <dict>
+            <key>TableSignature</key>
+            <data>
+                Q3B1MEk=
+            </data>
+        </dict>
+    </array>
+</dict>
 ```
-EFI/
-├── BOOT/
-│   └── BOOTx64.efi        # Bootloader entry point
-└── OC/
-    ├── config.plist       # Configuration (has recovery entry)
-    ├── OpenCore.efi       # OpenCore bootloader
-    ├── Kexts/             # Lilu, WhateverGreen, AppleALC, etc.
-    ├── Drivers/           # HfsPlus, OpenRuntime, ResetNvramEntry
-    ├── ACPI/              # SSDT-SBUS.aml, SSDT-EC.aml, SSDT-PLUG.aml
-    └── Resources/         # Fonts, icons, labels
+**Why:** Removes `CpuPm` and `Cpu0Ist` ACPI tables that conflict with macOS power management on Ivy Bridge.
+
+### 3.4 DeviceProperties — HD 4000 Graphics + IMEI Spoof
+```xml
+<key>DeviceProperties</key>
+<dict>
+    <key>Add</key>
+    <dict>
+        <key>PciRoot(0x0)/Pci(0x2,0x0)</key>
+        <dict>
+            <key>AAPL,ig-platform-id</key>
+            <data>
+                BwAAEA==
+            </data>
+            <key>device-id</key>
+            <data>
+                RBAQAA==
+            </data>
+            <key>framebuffer-patch-enable</key>
+            <data>
+                AQAAAA==
+            </data>
+        </dict>
+        <key>PciRoot(0x0)/Pci(0x1F,0x3)</key>
+        <dict>
+            <key>device-id</key>
+            <data>
+                CgQAAA==
+            </data>
+        </dict>
+    </dict>
+</dict>
 ```
+**Why:**
+- `AAPL,ig-platform-id` `0x03006601` → enables HD 4000 with correct framebuffer
+- `device-id` `0x01660000` → spoofs HD 4000 device ID for compatibility
+- `framebuffer-patch-enable` → activates framebuffer patching
+- IMEI `device-id` spoof → prevents "Missing Platform EFI" errors
 
-## ⚙️ Device Properties
-
-GPU `PciRoot(0x0)/Pci(0x2,0x0)` - framebuffer injected:
-
-| Property | Value | Description |
-|----------|-------|-------------|
-| AAPL,ig-platform-id | `0x01660004` | HD 4000 mobile (LVDS+VGA+HDMI) |
-| framebuffer-portcount | 2 | Dell 3521 has 2 video outputs |
-| framebuffer-pipecount | 2 | 2 display pipes |
-| framebuffer-memorycount | 2 | 2 memory entries |
-| framebuffer-stolenmem | 64 MB | Matches BIOS DVMT allocation |
-| framebuffer-unifiedmem | 1536 MB | Reported VRAM |
-| framebuffer-con0-alldata | LVDS connector | Internal display patch |
-| framebuffer-con1-alldata | VGA connector | External VGA patch |
-| enable-hdmi20 | 1 | Enable HDMI 2.0 output |
-
-> **Key fix**: portcount must be 2 (not 3). Dell 3521 has LVDS + VGA only.
-> unifiedmem must be 1536 MB (not bytes). stolenmem must be 64 MB for locked DVMT BIOS.
-
-## 🔁 First Boot Setup
-
-After installation, install bootloader to internal drive:
-
-```bash
-# Mount EFI partition
-sudo diskutil mount disk0s1
-
-# Copy EFI from USB to internal drive
-sudo cp -r /Volumes/NO\ NAME/EFI /Volumes/EFI/
-
-# Unmount
-sudo diskutil unmount disk0s1
+### 3.5 SecureBootModel
+```xml
+<key>Misc</key>
+<dict>
+    <key>Security</key>
+    <dict>
+        <key>SecureBootModel</key>
+        <string>Disabled</string>
+    </dict>
+</dict>
 ```
+**Why:** Disables Apple Secure Boot to allow booting unsigned recovery images and older macOS versions.
 
-## 🍎 Post-Installation (First macOS Session)
+### 3.6 USB Port Limit
+```xml
+<key>Kernel</key>
+<dict>
+    <key>Quirks</key>
+    <dict>
+        <key>XhciPortLimit</key>
+        <true/>
+    </dict>
+</dict>
+```
+**Why:** Temporarily lifts the 15 USB port limit during installation. **Remove after install** and use a proper USB port map instead.
 
-**Critical fixes to apply:**
+### 3.7 Additional Kernel Quirks
+```xml
+<key>Kernel</key>
+<dict>
+    <key>Quirks</key>
+    <dict>
+        <key>DisableIoMapper</key>
+        <true/>
+        <key>PanicNoKextDump</key>
+        <true/>
+        <key>PowerTimeoutKernelPanic</key>
+        <true/>
+    </dict>
+</dict>
+```
+**Why:**
+- `DisableIoMapper` → disables VT-d which conflicts with macOS
+- `PanicNoKextDump` → prevents kext dump on kernel panic (shows useful error instead)
+- `PowerTimeoutKernelPanic` → prevents panics from power timeout issues
 
-1. **Audio Fix**
-   - System Preferences → Sound → Output tab
-   - Try different layout-IDs by editing `config.plist`:
-   - `<key>layout-id</key><integer>1</integer>` (or 2, 3, 7)
+---
 
-2. **Bluetooth Fix (AR9462)**
-   ```bash
-   sudo kextcache -i /
-   # Reboot
+## 4. Step-by-Step Installation
+
+### 4.1 Prepare the USB on Windows
+
+1. **Format USB** as FAT32 (MBR or GPT — both work, GPT recommended)
+2. **Create folder structure:**
+   ```
+   F:\
+   ├── EFI\
+   │   ├── BOOT\
+   │   │   └── BOOTIA32.EFI        ← OpenCore.efi renamed (32-bit!)
+   │   └── OC\
+   │       ├── ACPI\                ← SSDTs (EC, HPET, etc.)
+   │       ├── Drivers\
+   │       │   ├── HfsPlus.efi
+   │       │   ├── OpenCanopy.efi
+   │       │   ├── OpenRuntime.efi
+   │       │   ├── OpenShell.efi
+   │       │   └── ResetNvramEntry.efi
+   │       ├── Kexts\
+   │       │   ├── AppleALC.kext
+   │       │   ├── IntelMausi.kext
+   │       │   ├── Lilu.kext
+   │       │   ├── NVMeFix.kext (if using NVMe)
+   │       │   ├── USBMap.kext or USBPorts.kext
+   │       │   ├── VirtualSMC.kext
+   │       │   └── WhateverGreen.kext
+   │       ├── Resources\           ← Audio, Font, Image, Label
+   │       ├── Tools\
+   │       │   └── OpenShell.efi
+   │       └── config.plist         ← THE CRITICAL FILE
+   └── com.apple.recovery.boot\
+       └── BaseSystem.dmg          ← macOS recovery image
    ```
 
-3. **Brightness Keys**
-   - Fn+F5/F6 should work
-   - If not: System Preferences → Displays → Brightness slider
+3. **Copy `OpenCore.efi` → `F:\EFI\BOOT\BOOTIA32.EFI`**
+   - This is the step most people miss on 32-bit EFI machines
+   - The file is identical, just renamed
 
-4. **USB Mapping (Optional)**
-   - If USB 3.0 ports show slow speeds:
-   - Use USBToolBox from macOS
-   - Create `UTBMap.kext`
-   - Replace `UTBDefault.kext` in `EFI/OC/Kexts/`
+4. **Copy `BaseSystem.dmg`** to `F:\com.apple.recovery.boot\`
 
-5. **Sleep/Wake Fix (Optional)**
-   - If laptop doesn't sleep properly:
-   - Add `SSDT-PTSWAK.aml` or `SSDT-GPRW.aml` to `EFI/OC/ACPI/`
+5. **Copy all kexts, drivers, ACPI files, and config.plist** to their respective folders
 
-## 🛠️ Post-Install
+### 4.2 Get Your USB's GUID (On Hardware)
 
-See [Post-Install Guide](docs/post-install.md) for:
-- Audio configuration (layout IDs: 1, 2, 3, 7)
-- USB port mapping
-- Brightness keys
-- Battery optimization
+1. Boot from USB → OpenCore picker → select **EFI Shell**
+2. Run:
+   ```
+   map -r
+   ```
+3. Find your USB (usually `FS0:`) and note the GUID:
+   ```
+   FS0:\EFI\BOOT> map -r
+   ```
+4. Look for the USB partition GUID in the output, e.g.:
+   ```
+   EE8AA418-5CCC-4AB0-8688AA4C1A34FDE6
+   ```
 
-## 🆘 Troubleshooting
+### 4.3 Update config.plist DevicePath
 
-**"NO NAME" in OpenCore** → Add recovery entry to config.plist:
+Edit `Misc → Entries` and set the DevicePath to:
 ```xml
-<key>Entries</key>
-<array>
-    <dict>
-        <key>Path</key>
-        <string>com.apple.recovery.boot/BaseSystem.dmg</string>
-        <key>Enabled</key><true/>
-        <key>FullTitle</key>
-        <string>macOS Big Sur Recovery</string>
-    </dict>
-</array>
+<string>PciRoot(0x0)/Pci(0x1D,0x0)/USB(0x0,0x0)/USB(0x3,0x0)/HD(1,GPT,YOUR-GUID-HERE)</string>
 ```
 
-See [Troubleshooting Guide](docs/troubleshooting.md) for more fixes.
+### 4.4 Boot & Install
 
-## 📚 Documentation
+1. Boot from USB → OpenCore picker appears
+2. Select **"macOS Recovery"** (or "macOS (external)")
+3. In Recovery, open **Disk Utility** → erase target disk as **Mac OS Extended (Journaled)** or **APFS**
+4. Close Disk Utility → select **"Reinstall macOS"**
+5. Let it install — it will reboot multiple times
+6. **On each reboot**, select the **"macOS Installer"** entry in the OpenCore picker
+7. After final reboot → macOS Setup Assistant appears
 
-| Guide | Purpose |
-|-------|---------|
-| **[Full Installation Guide](docs/full-installation-guide.md)** | **Complete step-by-step guide (recommended)** |
-| [Prerequisites](docs/prerequisites.md) | Tools & requirements |
-| [Installation](docs/macos-installation.md) | USB creation & install |
-| [Post-Install](docs/post-install.md) | Fixes after macOS |
-| [UEFI Config](docs/efi-configuration.md) | config.plist options |
-| [Troubleshooting](docs/troubleshooting.md) | Common issues |
-| [FAQ](docs/faq.md) | Questions & answers |
+---
 
-## 🤝 Support
+## 5. ESP Folder Structure
 
-- [r/hackintosh](https://reddit.com/r/hackintosh/)
-- [Dortania Discord](https://discord.gg/Wxam8aH)
-- [Acidanthera GitHub](https://github.com/acidanthera)
-
-## 🔐 iMessage/FaceTime (Post-Install)
-
-**Required before first login:**
-```bash
-# Generate unique MLB and ROM in config.plist
-# SMBIOS → Generic:
-# - SystemSerialNumber: [Unique 12-char]
-# - SystemUUID: [Unique UUID]
-# - MLB: [Unique 18-char]
-# - ROM: [Your WiFi MAC or custom]
-
-# Then:
-sudo nvram boot-args="-v"
-sudo rm -rf /Library/Preferences/com.apple.iCloud*
-# Reboot and try signing in
 ```
-
-## 🔄 System Updates
-
-**Before updating macOS:**
-1. Update OpenCore to latest version
-2. Backup EFI folder
-3. Disable non-Apple kexts in config.plist
-
-**Big Sur Update Notes:**
-- Kernel version 20.99.99 requires kext rebuild
-- USB mapping may need refresh after major updates
-
-## 📦 Recovery Partition
-
-**Create recovery after installation:**
-```bash
-# Download Recovery Update from Apple
-# Use OpenCore's builtin recovery support
-# Or: createinstallmedia method
+USB (F:\)
+├── EFI/
+│   ├── BOOT/
+│   │   └── BOOTIA32.EFI          ← 32-bit OpenCore
+│   └── OC/
+│       ├── ACPI/
+│       │   ├── SSDT-EC.aml
+│       │   ├── SSDT-HPET.aml
+│       │   └── ... (other SSDTs)
+│       ├── Drivers/
+│       │   ├── HfsPlus.efi
+│       │   ├── OpenCanopy.efi
+│       │   ├── OpenRuntime.efi
+│       │   ├── OpenShell.efi
+│       │   └── ResetNvramEntry.efi
+│       ├── Kexts/
+│       │   ├── AppleALC.kext/
+│       │   ├── IntelMausi.kext/
+│       │   ├── Lilu.kext/
+│       │   ├── USBMap.kext/ (or USBPorts.kext)
+│       │   ├── VirtualSMC.kext/
+│       │   └── WhateverGreen.kext/
+│       ├── Resources/
+│       │   ├── Audio/
+│       │   ├── Font/
+│       │   ├── Image/
+│       │   └── Label/
+│       ├── Tools/
+│       │   └── OpenShell.efi
+│       └── config.plist
+└── com.apple.recovery.boot/
+    └── BaseSystem.dmg
 ```
 
 ---
 
-**Note**: This is a personal project. Use at your own risk. Backups recommended before installation.
+## 6. PlatformInfo
+
+```xml
+<key>PlatformInfo</key>
+<dict>
+    <key>Generic</key>
+    <dict>
+        <key>MLB</key>
+        <string>C02413600GUFD47AD</string>
+        <key>SystemSerialNumber</key>
+        <string>C02MH5Y2F5V7</string>
+        <key>SystemUUID</key>
+        <string>F7301094-8AC7-43E0-9B57-6C9D8BCC8A38</string>
+        <key>SystemProductName</key>
+        <string>MacBookAir6,2</string>
+    </dict>
+</dict>
+```
+
+**Why MacBookAir6,2:** This is the closest match to the i5-3337U (Ivy Bridge) with HD 4000 graphics. It has the correct framebuffer and power management profiles.
+
+> **IMPORTANT:** These are example serials. Generate your own using GenSMBIOS to avoid iCloud conflicts with other Hackintosh users.
+
+---
+
+## 7. Known Issues & Workarounds
+
+### 7.1 OpenCanopy GUI Not Rendering
+- **Problem:** PickerMode=Auto does not show the GUI picker despite OpenCanopy.efi being loaded
+- **Workaround:** Use CLI picker (it works fine, just less pretty)
+- **Possible cause:** IA32 compatibility issue with OpenCanopy rendering
+
+### 7.2 USB Must Be GPT
+- The Dell 3521's IA32 EFI reads GPT USBs better than MBR
+- Use `diskpart` or Rufus to create GPT FAT32
+
+### 7.3 Recovery vs Install Media
+- We used the **recovery method** (BaseSystem.dmg) not a full macOS installer
+- Recovery is simpler and works well for first-time installs
+
+---
+
+## 8. Post-Install
+
+### 8.1 Copy EFI to Internal Disk
+Once macOS is installed and working:
+1. Mount the internal disk's EFI partition:
+   ```bash
+   sudo diskutil mount /dev/disk0s1
+   ```
+2. Copy the entire `EFI` folder from USB to the internal EFI partition
+3. **Make sure `BOOTIA32.EFI` is in the right place** — the internal disk also needs the 32-bit bootloader
+
+### 8.2 Remove XhciPortLimit
+After USB mapping is done:
+```xml
+<key>XhciPortLimit</key>
+<false/>
+```
+
+### 8.3 USB Port Mapping
+Create a proper USBMap.kext or USBPorts.kext for your specific port layout. The Dell 3521 typically has:
+- 2x USB 3.0 (rear)
+- 1x USB 2.0 (right side)
+- 1x USB 2.0 (internal, for webcam)
+
+### 8.4 WiFi
+The AR9485 may need:
+- `AirportItlwm.kext` (for Big Sur) or
+- `itlwm.kext` + `HeliPort.app` (alternative)
+
+### 8.5 Audio
+ALC282 should work with `alcid=3` boot arg. If not, try other values:
+- `alcid=1`, `alcid=2`, `alcid=3`, `alcid=13`, `alcid=27`
+
+---
+
+## 9. Troubleshooting
+
+### Boot Loop (Returns to Picker)
+- **Cause:** OpenCore can't find or load the boot volume
+- **Fixes:**
+  - Verify `SecureBootModel = Disabled`
+  - Verify `DmgLoading = Signed` or `Any`
+  - Check USB GUID in DevicePath matches `map -r` output
+  - Ensure `BOOTIA32.EFI` exists in `EFI\BOOT\`
+
+### Kernel Panic on Boot
+- **Cause:** Missing kext, wrong config, or incompatible hardware
+- **Fixes:**
+  - Boot with `-v debug=0x100 keepsyms=1` to see verbose output
+  - Check all kexts are present and compatible with your OpenCore version
+  - Verify `AppleCpuPmCfgLock = true` and `DummyPowerManagement = true`
+
+### Black Screen After Boot
+- **Cause:** Incorrect ig-platform-id or missing WhateverGreen
+- **Fixes:**
+  - Verify `AAPL,ig-platform-id` is `0x03006601` (base64: `BwAAEA==`)
+  - Ensure `WhateverGreen.kext` is loaded
+  - Try different boot args: `igfxonln=1`, `-igfxnohdmi`
+
+### No WiFi
+- **Cause:** AR9485 needs specific kext
+- **Fix:** Use `itlwm.kext` or `AirportItlwm.kext` for your macOS version
+
+---
+
+## Appendix: File Checksums (Verification)
+
+After copying files to USB, verify these critical files exist:
+
+```bash
+# On macOS/Linux, verify:
+ls -la /Volumes/EFI/EFI/BOOT/BOOTIA32.EFI
+ls -la /Volumes/EFI/EFI/OC/config.plist
+ls -la /Volumes/EFI/com.apple.recovery.boot/BaseSystem.dmg
+```
+
+---
+
+## Appendix: BIOS Settings
+
+Ensure these BIOS settings on the Dell 3521:
+
+| Setting | Value |
+|---------|-------|
+| SATA Mode | AHCI (NOT RAID/IDE) |
+| Secure Boot | Disabled |
+| UEFI Boot | Enabled |
+| Legacy Boot | Disabled (or set USB first) |
+| VT-d | Disabled (if available) |
+
+---
+
+*Last updated: July 2026*
+*Tested on: Dell Inspiron 3521, i5-3337U, OpenCore 1.0.5, macOS Big Sur 11.7.10*

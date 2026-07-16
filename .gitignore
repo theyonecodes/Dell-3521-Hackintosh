@@ -1,74 +1,28 @@
-# Dell 3521 Hackintosh - .gitignore
-
-# macOS
+# macOS metadata
 .DS_Store
 .AppleDouble
 .LSOverride
 ._*
-
-# Thumbnails
-._*
-
-# Files that might appear on external media
-._*
-
-# Source control
 .Spotlight-V100
 .Trashes
+.fseventsd
+.TemporaryItems
+.VolumeIcon.icns
 
-# EFI outputs (should be built by user)
-Output/
-Results/
+# OpenCore recovery (too large for GitHub)
+BaseSystem.dmg
+BaseSystem.chunklist
 
-# Hardware reports (contain real serial numbers)
-SysReport/
-*.json
-!config_examples/*.json
+# Generated SMBIOS — each user must create their own
+# config.plist contains example serials; generate yours with GenSMBIOS
 
-# Temporary files
-*.tmp
-*.log
-*.swp
-*~
-
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-
-# Linux
-*~
-
-# IDE
+# Editor / IDE
 .vscode/
 .idea/
-*.sublime-*
+*.swp
+*.swo
+*~
 
-# OpenCore builds
-OpenCore-*. RELEASE/
-Build/
-
-# Kexts (should be downloaded by user)
-*.kext
-
-# EFI template should be populated by user
-EFI/OC/Kexts/*
-!EFI/OC/Kexts/.gitkeep
-EFI/OC/ACPI/*
-!EFI/OC/ACPI/.gitkeep
-EFI/OC/Drivers/*
-!EFI/OC/Drivers/.gitkeep
-EFI/OC/Tools/*
-!EFI/OC/Tools/.gitkeep
-EFI/OC/Resources/*
-!EFI/OC/Resources/.gitkeep
-
-# OpenCorePkg (downloaded)
-OpenCorePkg/
-
-# OCK_Files (kext sources)
-OCK_Files/
-
-# Keep sample configs
-!config_examples/
+# Temporary
+Thumbs.db
+Desktop.ini
