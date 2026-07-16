@@ -108,7 +108,11 @@ Before doing anything else, enter BIOS on the Dell 3521 and change these setting
 
 ## 4. Step 1: Format the USB Drive
 
-The USB drive must be formatted as **GPT + FAT32**. The Dell 3521's IA32 EFI reads GPT USBs much more reliably than MBR.
+The USB drive must be formatted as **GPT + FAT32**.
+
+> **WHY GPT instead of MBR?** The Dell 3521's IA32 EFI firmware reads GPT USBs much more reliably than MBR. MBR formatting can cause the USB to not appear in the boot menu at all, or the EFI to be invisible to the firmware.
+
+> **WHY 16GB USB for a 637MB file?** The download is small, but macOS Recovery needs a FAT32 partition with enough headroom. Some USB drives report different usable sizes. 16GB is the safe minimum — it works every time.
 
 ### Method A: Using Rufus (Easiest)
 
@@ -158,7 +162,11 @@ After formatting, open File Explorer and confirm:
 
 ## 5. Step 2: Download macOS Recovery
 
-We use the **recovery method** (BaseSystem.dmg) rather than a full macOS installer. Recovery is simpler, smaller (~637 MB vs ~5 GB), and works perfectly for first-time installs.
+We use the **recovery method** (BaseSystem.dmg) rather than a full macOS installer.
+
+> **WHY Recovery instead of Full Installer?** Recovery is ~637 MB vs ~5 GB for the full installer. Recovery downloads macOS from Apple's servers during installation. It's simpler, faster to prepare, and works perfectly for first-time installs. The full installer is only needed if you want to install offline or on multiple machines.
+
+> **WHY gibMacOS?** Apple doesn't provide direct download links for macOS recovery images. gibMacOS queries Apple's software update catalog and extracts the exact recovery files for your chosen macOS version. It's the standard tool in the Hackintosh community for this.
 
 ### Download with gibMacOS
 
@@ -245,9 +253,13 @@ Copy these `.efi` files into `EFI/OC/Drivers/`:
 | **ResetNvramEntry.efi** | NVRAM reset option | Recommended |
 | **OpenCanopy.efi** | GUI picker (optional) | Optional — doesn't render on this hardware |
 
-> **apfs_aligned.efi** is critical. Big Sur installs to APFS by default. Without this driver, OpenCore cannot read the APFS partition after installation. This driver was not in the original OpenCore package — you need to download it separately or find it in community builds.
+> **apfs_aligned.efi** is critical. Big Sur installs to APFS by default. Without this driver, OpenCore cannot read the APFS partition after installation. This driver was **NOT included** in the standard OpenCore 1.0.5 package — you need to download it separately from [Acidanthera's GitHub](https://github.com/acidanthera/OcBinaryData/blob/master/Drivers/apfs_aligned.efi) or find it in community builds.
 
 ### 6.4 Copy ACPI (SSDTs)
+
+> **WHY do I need SSDTs?** SSDTs (Secondary System Description Tables) are small ACPI patches that tell macOS about hardware that the Dell 3521's BIOS doesn't expose correctly. Without them, macOS won't know how to manage the battery, backlight, embedded controller, or CPU power states.
+
+> **Where do I get these SSDTs?** These are **pre-compiled .aml files** — you do NOT compile them yourself. Download them from the [Dortania Dell 3521 guide](https://dortania.github.io/OpenCore-Install-Guide/) or use the ones from the reference EFI in this repository. The .aml files are binary — just copy them, don't try to edit them.
 
 Copy these `.aml` files into `EFI/OC/ACPI/`:
 
@@ -265,9 +277,14 @@ Copy these `.aml` files into `EFI/OC/ACPI/`:
 
 ### 6.5 Create config.plist
 
+> **WHY ProperTree and not Notepad++?** config.plist is a binary plist file. Notepad++ and similar editors corrupt binary plist data. ProperTree is designed specifically for OpenCore config files — it preserves binary data, understands the plist format, and has the `OC Clean Snapshot` feature that auto-populates your config with the kexts, drivers, and SSDTs you've placed in the EFI folder.
+
+**Where does config.plist come from?** OpenCore ships with a `Sample.plist` inside the `EFI/OC/` folder. This is your starting point. The file is NOT blank — it's a complete template with all default values.
+
 1. Open `ProperTree`
-2. Go to `File → Open` and navigate to `EFI/OC/config.plist`
-3. If it's blank or you're starting fresh, go to `File → OC Clean Snapshot` and select the `EFI/OC` folder — this auto-populates kexts, drivers, and SSDTs
+2. Go to `File → Open` and navigate to `EFI/OC/Sample.plist`
+3. Go to `File → Save As` and save it as `config.plist` in the same `EFI/OC/` folder
+4. Now go to `File → OC Clean Snapshot` and select the `EFI/OC` folder — this auto-populates kexts, drivers, and SSDTs from what you've placed in the folder
 
 ---
 
@@ -425,13 +442,15 @@ Make sure these drivers are listed in `UEFI → Drivers` and marked as **Enabled
 
 ### Validate with ocvalidate
 
-After all edits, run OpenCore's validation tool:
+After all edits, run OpenCore's validation tool to check for errors:
 
 ```
 OpenCore-1.0.5-RELEASE\Utilities\ocvalidate\ocvalidate.exe EFI\OC\config.plist
 ```
 
-If it says `No issues found`, your config is clean. If there are errors, fix them before proceeding.
+If it says `No issues found`, your config is clean. If there are errors, read the error messages carefully — they usually tell you exactly which key is wrong and what the expected value is. Fix them and re-run until clean.
+
+> **WHY validate?** A single typo in config.plist can cause a boot loop or kernel panic. ocvalidate catches structural errors before you try to boot.
 
 ---
 
@@ -519,21 +538,28 @@ Before booting, confirm these files exist on the USB:
 
 1. In the OpenCore picker, you should see **"macOS Recovery"** or **"macOS (external)"**
 2. Select it and press Enter
-3. If you don't see it, press **Spacebar** to show hidden entries
-4. Wait — verbose text will scroll on screen. This is normal with `-v` in boot-args
-5. The macOS Utilities (Recovery) screen should appear
+3. **If you don't see any entries:** Press **Spacebar** — this reveals hidden entries. OpenCore sometimes hides entries by default.
+4. Wait — verbose text will scroll on screen. This is normal with `-v` in boot-args.
+
+> **What does Verbose mode look like?** You'll see white text scrolling rapidly on a black screen. Lines like `ACPI: Mac...`, `kext done`, `EB:...` will fly by. This is normal — it's macOS loading drivers and initializing hardware. If it stops scrolling and stays black for more than 2 minutes, something went wrong (see Troubleshooting).
+
+5. The macOS Utilities (Recovery) screen should appear — a window with options like "Restore from Time Machine", "Reinstall macOS", "Disk Utility", etc.
 
 ### 9.3 Format the Target Disk
 
 1. Open **Disk Utility** from the Recovery menu
-2. Click **View → Show All Devices** (critical — otherwise you can't see the physical disk)
-3. Select the **physical disk** (not a partition) — usually "APPLE HDD" or "Samsung SSD" etc.
+2. Click **View → Show All Devices** (this is in the menu bar at the top — critical step, otherwise you only see volumes, not the physical disk)
+3. Select the **physical disk** (not a partition) — usually "APPLE HDD" or "Samsung SSD" etc. It's the top-level entry in the left sidebar.
 4. Click **Erase**:
    - **Name:** Macintosh HD (or anything you want)
    - **Format:** **APFS** (recommended for Big Sur) or Mac OS Extended (Journaled)
    - **Scheme:** **GUID Partition Map**
 5. Click **Erase** and wait
 6. Close Disk Utility
+
+> **WHY GUID Partition Map?** macOS requires GPT. The "Scheme" dropdown must be GUID Partition Map, not Master Boot Record. If you don't see this option, you selected a volume instead of the physical disk — go back to step 2.
+
+> **What if my disk doesn't appear?** This usually means AHCI mode isn't enabled in BIOS. Go back to BIOS settings and verify SATA Operation = AHCI. If it's set to RAID, macOS cannot see the disk.
 
 ### 9.4 Install macOS
 
@@ -545,16 +571,21 @@ Before booting, confirm these files exist on the USB:
 
 ### 9.5 Handle Reboots
 
-**This is where most people get confused.** Here's exactly what happens:
+**This is the part nobody explains clearly.** Here's exactly what happens:
 
-1. **First reboot:** The laptop restarts. You need to **boot from USB again** (press F12, select USB).
-2. In the OpenCore picker, you should now see a new entry: **"macOS Installer"**
-3. Select **"macOS Installer"** — NOT "macOS Recovery"
-4. **Second reboot:** Same thing — boot from USB again, select "macOS Installer"
-5. **Third reboot:** Same thing — boot from USB, select "macOS Installer"
-6. **Final reboot:** The laptop restarts and boots into **macOS Setup Assistant** (the "Welcome" screen)
+The installation process is **fully automatic**. After you click "Install" and the first progress bar finishes, the laptop will reboot on its own. **You do NOT need to select anything on each reboot.** Here's the full sequence:
 
-> **Rule:** Every time the laptop reboots during installation, you must boot from USB and select the **installer entry** (not Recovery). This may happen 3-5 times.
+1. **You click "Install macOS Big Sur"** → progress bar fills → laptop reboots automatically
+2. **First reboot:** Laptop restarts. Press **F12** → select USB again. OpenCore picker appears. **It will automatically select the next boot entry** — you see verbose text scroll, then another progress bar. **Do not touch anything.** Wait.
+3. **Second reboot:** Same thing — laptop restarts, you press F12 → select USB. OpenCore picker appears again. Verbose text → progress bar. **Do not touch anything.** Wait.
+4. **Third reboot:** Same thing — F12 → USB. This may happen 3-5 times total. Each time, OpenCore automatically detects the correct boot entry and selects it.
+5. **Final reboot:** The laptop restarts and boots into **macOS Setup Assistant** (the "Welcome" screen with language selection).
+
+> **Key point:** Each time you boot from USB after a reboot, OpenCore auto-detects the next stage of installation. You do NOT manually select "macOS Installer" — OpenCore handles it. Just boot from USB and let it run.
+
+> **How to know it's done:** When you see the macOS language selection screen (Welcome screen), installation is complete.
+
+> **WHY does it reboot multiple times?** macOS installation happens in stages: first it copies files to the disk, then it configures the system, then it finalizes. Each reboot completes a stage. This is normal macOS behavior — even real Macs reboot multiple times during installation.
 
 ### 9.6 Complete Setup
 
@@ -572,22 +603,32 @@ Before booting, confirm these files exist on the USB:
 
 The USB is only needed for booting right now. You need to copy the EFI to your internal disk's EFI partition so you can boot without the USB.
 
-**In Terminal (macOS):**
+**Step 1: Mount the EFI partition of your internal disk**
+
+In Terminal (macOS):
 
 ```bash
-# Mount the EFI partition of your internal disk
+# Find your internal disk (usually disk0)
+diskutil list
+
+# Mount the EFI partition (usually disk0s1)
 sudo diskutil mount /dev/disk0s1
-
-# Copy EFI from USB to internal disk
-sudo cp -R /Volumes/EFI/EFI /Volumes/EFI\ 1/
-
-# Or manually:
-# 1. Open two Finder windows
-# 2. Mount both EFI partitions (USB and internal)
-# 3. Copy the entire EFI folder from USB to internal
 ```
 
-**Make sure the internal EFI partition has this structure:**
+> **WHY do I need to mount it?** The EFI partition is a special partition that macOS hides by default. It contains the bootloader. You need to mount it to copy OpenCore's files into it.
+
+**Step 2: Copy EFI from USB to internal disk**
+
+```bash
+# Copy the entire EFI folder
+sudo cp -R /Volumes/EFI/EFI /Volumes/EFI\ 1/
+```
+
+> **Or use Finder:** Open two Finder windows. One showing the USB's EFI partition (already mounted), one showing the internal EFI partition. Drag the `EFI` folder from USB to internal.
+
+**Step 3: Verify the structure**
+
+Make sure the internal EFI partition has this structure:
 
 ```
 /dev/disk0s1 (EFI)
@@ -602,7 +643,19 @@ sudo cp -R /Volumes/EFI/EFI /Volumes/EFI\ 1/
         └── config.plist
 ```
 
-### 10.2 Remove XhciPortLimit After USB Mapping
+### 10.2 Test Internal Boot (IMPORTANT — Don't Skip!)
+
+Before removing the USB, test that the laptop can boot from the internal disk:
+
+1. **Shut down** the laptop completely
+2. **Remove the USB drive**
+3. **Power on** the laptop
+4. If it boots into macOS — **success!** The internal EFI is working.
+5. If it doesn't boot — plug the USB back in, re-check the EFI copy, and try again.
+
+> **WHY test this?** If you remove the USB and the internal EFI doesn't work, you'll be stuck with an unbootable laptop. Always test first.
+
+### 10.3 Remove XhciPortLimit After USB Mapping
 
 After you've created a proper USB port map, remove the temporary port limit:
 
@@ -611,7 +664,7 @@ After you've created a proper USB port map, remove the temporary port limit:
 <false/>
 ```
 
-### 10.3 Audio
+### 10.4 Audio
 
 If audio doesn't work, try different `alcid` values in boot-args:
 
@@ -626,7 +679,7 @@ If audio doesn't work, try different `alcid` values in boot-args:
 
 Edit boot-args in config.plist at `NVRAM → Add → 7C436110-AB2A-4BBB-A880-FE41995C9F82 → boot-args`.
 
-### 10.4 WiFi
+### 10.5 WiFi
 
 The Qualcomm Atheros AR9485 may need:
 
@@ -635,11 +688,11 @@ The Qualcomm Atheros AR9485 may need:
 
 Note: AR9485 support varies by macOS version. Big Sur should work with the right kext.
 
-### 10.5 Ethernet
+### 10.6 Ethernet
 
 The Realtek RTL8100 should work with `RealtekRTL8100.kext` which is already in the EFI.
 
-### 10.6 Brightness Control
+### 10.7 Brightness Control
 
 Brightness keys should work with `BrightnessKeys.kext` + `SSDT-PNLF.aml` (both already in the EFI).
 
@@ -996,6 +1049,42 @@ USB (F:\)
 - **Recovery** (what we used): Downloads macOS from Apple's servers during installation. ~637 MB download. Simpler setup.
 - **Full Installer**: Contains the complete macOS installer. ~5 GB download. Can install offline.
 - Both work. Recovery is recommended for first-time installs because it's smaller and simpler.
+
+### Q: Why does the installation reboot multiple times?
+
+**A:** macOS installation happens in stages: (1) copy files to disk, (2) configure the system, (3) finalize settings. Each reboot completes a stage. Even real Macs reboot multiple times during installation — this is normal macOS behavior, not a Hackintosh issue.
+
+### Q: Do I need to select "macOS Installer" on each reboot?
+
+**A:** No. The process is automatic. After you boot from USB, OpenCore auto-detects the next stage of installation and selects it. You just need to boot from USB each time (press F12, select USB). Don't touch the OpenCore picker — let it auto-select.
+
+### Q: What does verbose mode look like?
+
+**A:** White text scrolling on a black screen. Lines like `ACPI: Mac...`, `kext done`, `EB:...` will fly by. This is normal — it's macOS loading. If it stops for more than 2 minutes, see Troubleshooting.
+
+### Q: Why can't I just format the USB with Windows File Explorer?
+
+**A:** Windows File Explorer formats as NTFS or exFAT by default. macOS EFI requires FAT32, and the Dell 3521 requires GPT (not MBR). Rufus or diskpart are the only reliable ways to get GPT + FAT32.
+
+### Q: What if my disk doesn't appear in Disk Utility?
+
+**A:** This usually means AHCI mode isn't enabled in BIOS. Go back to BIOS settings and verify SATA Operation = AHCI. If it's set to RAID, macOS cannot see the disk. You may need to reinstall Windows after changing this.
+
+### Q: What if I get "ocb: loadimage failed" error?
+
+**A:** This means OpenCore can't find the boot files. Common causes:
+- `Misc.Entries` has hardcoded paths — clear it (set to empty array `()`)
+- `BOOTIA32.EFI` is missing from `EFI/BOOT/`
+- USB is MBR instead of GPT
+- Re-run ocvalidate to check for config errors
+
+### Q: How do I know if my config.plist is correct?
+
+**A:** Run `ocvalidate` — it checks for structural errors. If it says "No issues found", the structure is correct. If macOS still doesn't boot, the issue is likely a value that's technically valid but wrong for your hardware (like wrong ig-platform-id). Check the Troubleshooting section.
+
+### Q: Can I use this EFI on a different Ivy Bridge laptop?
+
+**A:** Possibly, but you'll need to adjust: SSDTs (different laptops need different ACPI patches), USB port map (UTBMap.kext), audio layout ID (alcid boot-arg), and SMBIOS (may need a different Mac model). The core config fixes (CPU power management, HD 4000 graphics) are the same for all Ivy Bridge laptops.
 
 ---
 
