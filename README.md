@@ -630,6 +630,34 @@ Make sure these files exist:
 2. **The laptop should boot from the internal disk** with OpenCore
 3. **If it doesn't boot**, plug the USB back in and try again
 
+### 8.5 Remove Debug Boot Flags (After Everything Works)
+Once macOS boots and WiFi/audio work, remove the verbose debug flags for a clean Apple-logo boot:
+
+**Terminal commands (run in macOS):**
+```bash
+# Mount the EFI partition
+sudo diskutil mount disk0s1
+
+# Edit config.plist to remove debug flags
+sudo sed -i '' 's/-v debug=0x100 keepsyms=1 alcid=29 igfxonln=1 -igfxnohdmi/alcid=29 igfxonln=1 -igfxnohdmi/' /Volumes/EFI/EFI/OC/config.plist
+
+# Reboot
+sudo reboot
+```
+
+**Before (debug):** `-v debug=0x100 keepsyms=1 alcid=29 igfxonln=1 -igfxnohdmi`
+**After (clean):** `alcid=29 igfxonln=1 -igfxnohdmi`
+
+**What was removed:**
+- `-v` — verbose text during boot (shows Apple logo instead)
+- `debug=0x100` — panic log capture (safe to remove once stable)
+- `keepsyms=1` — debug symbols in panic reports (safe to remove once stable)
+
+**To re-add for debugging:**
+```bash
+sudo sed -i '' 's/alcid=29 igfxonln=1 -igfxnohdmi/-v debug=0x100 keepsyms=1 alcid=29 igfxonln=1 -igfxnohdmi/' /Volumes/EFI/EFI/OC/config.plist
+```
+
 ---
 
 ## 13. ESP Folder Structure
@@ -777,11 +805,22 @@ F:\
 ### No WiFi
 **Symptoms:** WiFi icon shows "No Hardware Installed" or similar.
 
-**Fixes:**
+**First: Identify your WiFi card (in Windows Device Manager → Network adapters):**
+- **Intel WiFi** → AirportItlwm.kext should work (included in EFI)
+- **Qualcomm Atheros AR9485** → AirportItlwm will NOT work (it's Intel-only)
+
+**Fixes (Intel WiFi):**
 - Ensure `AirportItlwm.kext` is in `EFI/OC/Kexts/` and enabled in config.plist
 - The kext must match your macOS version (Big Sur version is included)
 - If WiFi still doesn't work, try `itlwm.kext` + HeliPort app instead
 - Check that `AirportBrcmFixup.kext` is **disabled** (it's for Broadcom, not Intel)
+
+**Fixes (Atheros AR9485 — NOT supported by AirportItlwm):**
+- The Dell 3521 shipped with Atheros AR9485 in some regions
+- Use `itlwm.kext` (not AirportItlwm) + HeliPort app for WiFi management
+- Download from: https://github.com/OpenIntelWireless/itlwm/releases
+- Add `itlwm.kext` to `EFI/OC/Kexts/` and enable in config.plist
+- Disable `AirportItlwm.kext` in config.plist
 
 ### No Audio
 **Symptoms:** No sound from speakers or headphone jack.
