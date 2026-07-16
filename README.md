@@ -35,7 +35,7 @@ This document details the **exact process** that successfully installed macOS Bi
 | EFI Firmware | IA32 (32-bit) — **NOT x86_64** |
 | Graphics | Intel HD Graphics 4000 |
 | Audio | Realtek ALC282 |
-| WiFi | Intel WiFi (supported via AirportItlwm.kext) |
+| WiFi | **Atheros AR9485** (Qualcomm, `168C-0036`) — no native macOS support |
 | USB | Kingston DataTraveler 16GB |
 
 ### Critical Hardware Detail
@@ -336,12 +336,14 @@ Kexts are macOS kernel extensions. Check these exist in `EFI\OC\Kexts\`:
 - `SMCBatteryManager.kext` — battery status
 - `ECEnabler.kext` — embedded controller battery fix
 
-### 4.4 WiFi & Bluetooth (Already Included)
-The Dell 3521 has **Intel WiFi** — this is already handled by `AirportItlwm.kext` in the EFI folder. No extra download needed.
+### 4.4 WiFi & Bluetooth
+> **⚠️ IMPORTANT:** The Dell 3521 ships with an **Atheros AR9485** (`168C-0036`), NOT Intel WiFi. AirportItlwm.kext and itlwm.kext are Intel-only and will never work with this card. There are no native macOS kexts for Atheros on Big Sur.
 
-Bluetooth uses `BrcmPatchRAM3.kext` + `BrcmFirmwareData.kext` + `BrcmBluetoothInjector.kext` (also already included).
+**WiFi solution:** Use a **USB WiFi dongle** (any adapter supported by macOS via realtek drivers or a native chipset like MediaTek). See [USB WiFi Setup](#usb-wifi-setup) below.
 
-> **Note:** The `AirportBrcmFixup.kext` in the Kexts folder is disabled — it's for Broadcom WiFi only and is not needed.
+`AirportItlwm.kext` is kept in the EFI folder in case you later swap the card for an Intel one.
+
+Bluetooth uses `BrcmPatchRAM3.kext` + `BrcmFirmwareData.kext` + `BrcmBluetoothInjector.kext` (already included).
 
 ---
 
@@ -766,6 +768,26 @@ F:\
 
 ---
 
+### USB WiFi Setup
+
+The Atheros AR9485 has no macOS kext — use a USB WiFi dongle instead.
+
+**Steps:**
+1. Confirm USB ports work (keyboard/mouse detected)
+2. Plug USB WiFi dongle into a **USB 3.0 port** (SS01 or SS02 — the blue ports)
+3. macOS will detect it automatically as a network interface (no driver install needed for most Realtek-based dongles)
+4. Go to **System Preferences → Network** → click the `+` icon → select your USB WiFi adapter from the dropdown
+5. Connect to your network
+
+**Compatible cheap dongles:**
+- TP-Link TL-WN725N (Realtek RTL8188EUS) — native macOS support, ~$10
+- TP-Link TL-WN722N v1 (Atheros AR9271) — works via USB passthrough
+- Any Realtek RTL8812AU/RTL8821CU based adapter
+
+> **Tip:** The USB WiFi dongle does NOT support Bluetooth. For Bluetooth, keep the internal BrcmPatchRAM kexts loaded — they handle the Dell's built-in Bluetooth module separately.
+
+---
+
 ## 16. Troubleshooting
 
 ### Boot Loop (Returns to Picker)
@@ -803,24 +825,17 @@ F:\
 - Try connecting an external monitor via VGA
 
 ### No WiFi
-**Symptoms:** WiFi icon shows "No Hardware Installed" or similar.
+**Root Cause:** The Dell 3521 has an **Atheros AR9485** (Qualcomm, `168C-0036`). This card has NO macOS support — no kext exists for it. The WiFi card was identified via Windows Device Manager → Network adapters → Qualcomm Atheros AR9485.
 
-**First: Identify your WiFi card (in Windows Device Manager → Network adapters):**
-- **Intel WiFi** → AirportItlwm.kext should work (included in EFI)
-- **Qualcomm Atheros AR9485** → AirportItlwm will NOT work (it's Intel-only)
+**Symptoms:** WiFi icon shows "No Hardware Installed" or `en0` not built in.
 
-**Fixes (Intel WiFi):**
-- Ensure `AirportItlwm.kext` is in `EFI/OC/Kexts/` and enabled in config.plist
-- The kext must match your macOS version (Big Sur version is included)
-- If WiFi still doesn't work, try `itlwm.kext` + HeliPort app instead
-- Check that `AirportBrcmFixup.kext` is **disabled** (it's for Broadcom, not Intel)
+**Solution: Use a USB WiFi dongle**
+- Any macOS-compatible USB WiFi adapter will work once USB ports are functional
+- Plug into USB 3.0 port (SS01 or SS02) for best performance
+- macOS will detect it automatically as a network interface
+- Common cheap options: TP-Link TL-WN725N (Realtek RTL8188EUS — has macOS driver)
 
-**Fixes (Atheros AR9485 — NOT supported by AirportItlwm):**
-- The Dell 3521 shipped with Atheros AR9485 in some regions
-- Use `itlwm.kext` (not AirportItlwm) + HeliPort app for WiFi management
-- Download from: https://github.com/OpenIntelWireless/itlwm/releases
-- Add `itlwm.kext` to `EFI/OC/Kexts/` and enable in config.plist
-- Disable `AirportItlwm.kext` in config.plist
+**AirportItlwm.kext is kept for future use** — if you swap the Atheros card for an Intel one, re-enable it in config.plist.
 
 ### No Audio
 **Symptoms:** No sound from speakers or headphone jack.
@@ -831,12 +846,22 @@ F:\
 - Check System Preferences → Sound → Output
 
 ### USB Not Working
-**Symptoms:** USB drives or keyboard/mouse not detected.
+**Root Cause:** The Dell 3521 has EHC1 + EHC2 (USB 2.0) + XHC (USB 3.0) controllers — 6+ physical ports. The old UTBMap.kext was missing a dependency (`com.dhinakg.USBToolBox.kext`) and only mapped 4 ports.
 
-**Fixes:**
-- Ensure `XhciPortLimit = True` during installation
-- Create a proper USB port map with USBToolBox after installation
-- The Dell 3521 typically has: 2x USB 3.0 (rear), 1x USB 2.0 (right side), 1x USB 2.0 (internal, webcam)
+**Fix:** `USBMap.kext` is now included — a self-contained port map using Apple's built-in `AppleUSBMergeNub` driver with no external dependencies. Port map:
+
+| Controller | Port | Type | UsbConnector |
+|------------|------|------|-------------|
+| EHC1 | PRT1 | Internal | 255 |
+| EHC1 | PRT2 | External USB 2.0 | 0 |
+| EHC2 | PRT1 | Internal (webcam hub) | 255 |
+| EHC2 | PRT2 | External USB 2.0 | 0 |
+| XHC | HS01 | External USB 2.0 | 0 |
+| XHC | HS02 | External USB 2.0 | 0 |
+| XHC | SS01 | External USB 3.0 | 3 |
+| XHC | SS02 | External USB 3.0 | 3 |
+
+Total: **8 ports** (under macOS 15-port limit). Use USB 3.0 ports (SS01/SS02) for USB WiFi dongle.
 
 ### Battery Status Not Showing
 **Symptoms:** Battery percentage not shown in menu bar.

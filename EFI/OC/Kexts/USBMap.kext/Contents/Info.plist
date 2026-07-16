@@ -4,32 +4,34 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
+	<key>CFBundleExecutable</key>
+	<string></string>
 	<key>CFBundleGetInfoString</key>
-	<string>v1.1</string>
+	<string>v1.0</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.dhinakg.USBToolBox.map</string>
+	<string>com.apple.driver.AppleUSBMergeNub</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>UTBMap</string>
+	<string>USBMap</string>
 	<key>CFBundlePackageType</key>
 	<string>KEXT</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.1</string>
+	<string>1.0</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>1.1</string>
+	<string>1.0</string>
 	<key>IOKitPersonalities</key>
 	<dict>
 		<key>EHC1</key>
 		<dict>
 			<key>CFBundleIdentifier</key>
-			<string>com.dhinakg.USBToolBox.kext</string>
+			<string>com.apple.driver.AppleUSBMergeNub</string>
 			<key>IOClass</key>
-			<string>USBToolBox</string>
+			<string>AppleUSBMergeNub</string>
 			<key>IOMatchCategory</key>
-			<string>USBToolBox</string>
+			<string>AppleUSBMergeNub</string>
 			<key>IONameMatch</key>
 			<string>EHC1</string>
 			<key>IOProviderClass</key>
@@ -37,9 +39,7 @@
 			<key>IOProviderMergeProperties</key>
 			<dict>
 				<key>port-count</key>
-				<data>
-				AQAAAA==
-				</data>
+				<data>AgAAAA==</data>
 				<key>ports</key>
 				<dict>
 					<key>PRT1</key>
@@ -47,9 +47,14 @@
 						<key>UsbConnector</key>
 						<integer>255</integer>
 						<key>port</key>
-						<data>
-						AQAAAA==
-						</data>
+						<data>AQAAAA==</data>
+					</dict>
+					<key>PRT2</key>
+					<dict>
+						<key>UsbConnector</key>
+						<integer>0</integer>
+						<key>port</key>
+						<data>AgAAAA==</data>
 					</dict>
 				</dict>
 			</dict>
@@ -57,11 +62,11 @@
 		<key>EHC2</key>
 		<dict>
 			<key>CFBundleIdentifier</key>
-			<string>com.dhinakg.USBToolBox.kext</string>
+			<string>com.apple.driver.AppleUSBMergeNub</string>
 			<key>IOClass</key>
-			<string>USBToolBox</string>
+			<string>AppleUSBMergeNub</string>
 			<key>IOMatchCategory</key>
-			<string>USBToolBox</string>
+			<string>AppleUSBMergeNub</string>
 			<key>IONameMatch</key>
 			<string>EHC2</string>
 			<key>IOProviderClass</key>
@@ -69,9 +74,7 @@
 			<key>IOProviderMergeProperties</key>
 			<dict>
 				<key>port-count</key>
-				<data>
-				AQAAAA==
-				</data>
+				<data>AgAAAA==</data>
 				<key>ports</key>
 				<dict>
 					<key>PRT1</key>
@@ -79,9 +82,14 @@
 						<key>UsbConnector</key>
 						<integer>255</integer>
 						<key>port</key>
-						<data>
-						AQAAAA==
-						</data>
+						<data>AQAAAA==</data>
+					</dict>
+					<key>PRT2</key>
+					<dict>
+						<key>UsbConnector</key>
+						<integer>0</integer>
+						<key>port</key>
+						<data>AgAAAA==</data>
 					</dict>
 				</dict>
 			</dict>
@@ -89,11 +97,11 @@
 		<key>XHC</key>
 		<dict>
 			<key>CFBundleIdentifier</key>
-			<string>com.dhinakg.USBToolBox.kext</string>
+			<string>com.apple.driver.AppleUSBMergeNub</string>
 			<key>IOClass</key>
-			<string>USBToolBox</string>
+			<string>AppleUSBMergeNub</string>
 			<key>IOMatchCategory</key>
-			<string>USBToolBox</string>
+			<string>AppleUSBMergeNub</string>
 			<key>IONameMatch</key>
 			<string>XHC</string>
 			<key>IOProviderClass</key>
@@ -101,39 +109,42 @@
 			<key>IOProviderMergeProperties</key>
 			<dict>
 				<key>port-count</key>
-				<data>
-				BgAAAA==
-				</data>
+				<data>BgAAAA==</data>
 				<key>ports</key>
 				<dict>
 					<key>HS01</key>
 					<dict>
 						<key>UsbConnector</key>
-						<integer>3</integer>
+						<integer>0</integer>
 						<key>port</key>
-						<data>
-						AgAAAA==
-						</data>
+						<data>AQAAAA==</data>
+					</dict>
+					<key>HS02</key>
+					<dict>
+						<key>UsbConnector</key>
+						<integer>0</integer>
+						<key>port</key>
+						<data>AgAAAA==</data>
 					</dict>
 					<key>SS01</key>
 					<dict>
 						<key>UsbConnector</key>
 						<integer>3</integer>
 						<key>port</key>
-						<data>
-						BgAAAA==
-						</data>
+						<data>BQAAAA==</data>
+					</dict>
+					<key>SS02</key>
+					<dict>
+						<key>UsbConnector</key>
+						<integer>3</integer>
+						<key>port</key>
+						<data>BgAAAA==</data>
 					</dict>
 				</dict>
 			</dict>
 		</dict>
 	</dict>
-	<key>OSBundleLibraries</key>
-	<dict>
-		<key>com.dhinakg.USBToolBox.kext</key>
-		<string>1.0.0</string>
-	</dict>
-	<key>OSBundleRequired</key>
-	<string>Root</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>USBMap - Dell 3521 USB Port Map</string>
 </dict>
 </plist>
