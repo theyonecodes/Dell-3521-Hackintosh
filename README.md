@@ -48,11 +48,21 @@ This repository contains the **exact working EFI** and **step-by-step instructio
 >
 > Every computer has a small program built into the motherboard that runs before the operating system starts. This is called the **EFI firmware** (or BIOS). On most modern laptops, this firmware is 64-bit (x86_64). On the Dell 3521, it's **32-bit (IA32)**.
 >
-> This matters because:
-> - The standard OpenCore download includes a 64-bit bootloader called `BOOTx64.EFI`. This **will NOT work** on the Dell 3521.
-> - The IA32 build includes a 32-bit bootloader called `BOOTIA32.EFI`. You **MUST** use this one.
-> - The two files are **the same program** — just compiled for different CPU architectures. You're not losing any features by using the 32-bit version.
-> - This is the #1 reason most people fail on this laptop — they use the 64-bit file and get a black screen.
+> **Where do BOOTIA32.EFI and BOOTx64.EFI come from?**
+>
+> When you download OpenCore from [GitHub](https://github.com/acidanthera/OpenCorePkg/releases), the zip file contains **two folders**:
+> - `x64/` — contains `EFI/BOOT/BOOTx64.EFI` (64-bit bootloader)
+> - `IA32/` — contains `EFI/BOOT/BOOTIA32.EFI` (32-bit bootloader)
+>
+> Both files are **the same program** — just compiled for different CPU architectures. You're not losing any features by using the 32-bit version.
+>
+> **What you need to do:**
+> - Download the IA32 build (not x64)
+> - When you extract it, `BOOTIA32.EFI` is **already there** in `IA32/EFI/BOOT/`
+> - You don't create it — you just use the one that's already included
+> - **Do NOT use** `BOOTx64.EFI` from the x64 folder — it won't work on this laptop
+>
+> This is the #1 reason most people fail on this laptop — they use the 64-bit file and get a black screen.
 
 If you use the wrong EFI binary, you will get a black screen or the laptop will simply ignore the USB.
 
@@ -534,7 +544,11 @@ The script will:
 
 This is the step most people miss. Here's what's happening:
 
-When you downloaded OpenCore, the `EFI/BOOT/` folder contains a file called `BOOTIA32.EFI`. But OpenCore also has a file called `OpenCore.efi` in `EFI/OC/`. Both are the bootloader — `BOOTIA32.EFI` is the one your laptop's firmware looks for when booting.
+When you extracted the IA32 OpenCore download, the `EFI/BOOT/` folder **already contains** `BOOTIA32.EFI`. This file is the bootloader that your laptop's firmware looks for when booting. It's already included in the download — you don't create it.
+
+However, OpenCore also has a file called `OpenCore.efi` in `EFI/OC/`. This is the main OpenCore program. `BOOTIA32.EFI` in `EFI/BOOT/` is what starts the boot process — it loads `OpenCore.efi` which then reads your config.
+
+**What to do:** Make sure `BOOTIA32.EFI` exists in `EFI/BOOT/`. If it's not there (which shouldn't happen with the IA32 download), copy `OpenCore.efi` from `EFI/OC/` to `EFI/BOOT/` and rename it to `BOOTIA32.EFI`.
 
 **What to do:** Copy `OpenCore.efi` from `EFI/OC/` to `EFI/BOOT/` and rename it to `BOOTIA32.EFI`.
 
