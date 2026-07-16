@@ -311,9 +311,8 @@ Some drivers are NOT included in the standard OpenCore download. You need to dow
 
 **Download `apfs_aligned.efi`:**
 - This driver lets OpenCore read APFS partitions (macOS uses APFS)
-- Download from: https://github.com/acidanthera/OcBinaryData/blob/master/Drivers/HfsPlus.efi
-- Actually, download `apfs_aligned.efi` from: https://github.com/acidanthera/OcBinaryData/blob/master/Drivers/apfs_aligned.efi
-- Save it to `Desktop\MacOS\EFI\OC\Drivers\`
+- Download from: https://github.com/acidanthera/OcBinaryData/blob/master/Drivers/apfs_aligned.efi
+- Save it to `EFI\OC\Drivers\`
 
 **Check these drivers exist in `EFI\OC\Drivers\`:**
 - `HfsPlus.efi` — reads HFS+ partitions (included in OpenCore)
@@ -431,29 +430,25 @@ Now make each change manually in ProperTree. Navigate the tree by clicking the a
 3. Change from `False` to `True`
 4. **Why:** Prevents kernel panics from AppleIntelCPUPowerManagement
 
-#### Fix 9: Enable AppleCpuPmCfgLock (if not already done)
-Same as Fix 7.
-
-#### Fix 10: Set SecureBootModel to Disabled
+#### Fix 9: Set SecureBootModel to Disabled
 1. Navigate to: `Misc` → `Security`
 2. Find `SecureBootModel`
 3. Change from `Default` to `Disabled`
 4. **Why:** Disables Apple Secure Boot to allow unsigned recovery images
 
-#### Fix 11: Enable XhciPortLimit
+#### Fix 10: Enable XhciPortLimit
 1. Navigate to: `Kernel` → `Quirks`
 2. Find `XhciPortLimit`
 3. Change from `False` to `True`
-4. **Why:** Temporarily lifts the 15 USB port limit during installation
-5. **REMOVE THIS AFTER INSTALL** — use proper USB port mapping instead
+4. **Why:** Lifts the 15 USB port limit so all ports work
 
-#### Fix 12: Set IgnoreInvalidFlexRatio
+#### Fix 11: Set IgnoreInvalidFlexRatio
 1. Navigate to: `UEFI` → `Quirks`
 2. Find `IgnoreInvalidFlexRatio`
 3. Change from `False` to `True`
 4. **Why:** Fixes a BIOS bug on some Ivy Bridge boards
 
-#### Fix 13: Delete CpuPm and Cpu0Ist Tables
+#### Fix 12: Delete CpuPm and Cpu0Ist Tables
 1. Navigate to: `ACPI` → `Delete`
 2. Add two entries:
    ```xml
@@ -468,7 +463,7 @@ Same as Fix 7.
    ```
 3. **Why:** Removes CPU power tables that conflict with macOS
 
-#### Fix 14: Add HD 4000 Graphics Properties
+#### Fix 13: Add HD 4000 Graphics Properties
 1. Navigate to: `DeviceProperties` → `Add`
 2. Add key: `PciRoot(0x0)/Pci(0x2,0x0)`
 3. Add these values inside it:
@@ -477,13 +472,13 @@ Same as Fix 7.
    - `framebuffer-patch-enable` = `AQAAAA==` (base64 for 0x00000001)
 4. **Why:** Enables HD 4000 graphics with correct framebuffer
 
-#### Fix 15: Add IMEI Spoof
+#### Fix 14: Add IMEI Spoof
 1. Navigate to: `DeviceProperties` → `Add`
 2. Add key: `PciRoot(0x0)/Pci(0x1F,0x3)`
 3. Add value: `device-id` = `CgQAAA==` (base64 for 0x02000000)
 4. **Why:** Prevents "Missing Platform EFI" errors
 
-#### Fix 16: Add apfs_aligned.efi Driver
+#### Fix 15: Add apfs_aligned.efi Driver
 1. Navigate to: `UEFI` → `Drivers`
 2. Add a new entry:
    ```xml
@@ -630,7 +625,7 @@ Make sure these files exist:
 /Volumes/EFI/EFI/OC/Kexts/AirportItlwm.kext
 ```
 
-### 8.3 Remove USB and Test
+### 8.4 Remove USB and Test
 1. **Restart the laptop** → remove the USB
 2. **The laptop should boot from the internal disk** with OpenCore
 3. **If it doesn't boot**, plug the USB back in and try again
@@ -899,16 +894,6 @@ F:\
 | **diskpart** | Windows disk partitioning | Built into Windows |
 | **ocvalidate** | Validates config.plist | Inside OpenCore download |
 | **USBToolBox** | USB port mapping | [GitHub](https://github.com/USBToolBox/USBToolBox) |
-
-### Custom Scripts (This Project)
-
-| Script | What It Does |
-|--------|--------------|
-| `COPY_HAKINTOSH_USB.ps1` | Copies EFI + recovery to USB, verifies files |
-| `apply_theyronecodes_fixes.py` | Applies all config.plist fixes automatically |
-| `check_gpt.py` | Verifies backup GPT table on disk via raw disk read |
-| `build_usb_makeinstall.py` | Advanced USB builder with MBR + legacy boot support |
-| `build_usb.py` | Simple USB builder (copies EFI + recovery) |
 
 ### Resources
 
