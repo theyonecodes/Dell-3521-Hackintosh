@@ -1,30 +1,28 @@
 # Hackintosh macOS Big Sur on Dell Inspiron 3521 — Complete Guide
 
-This repository contains the **exact working EFI** and **step-by-step instructions** that successfully installed macOS Big Sur 11.7.10 on a Dell Inspiron 3521 using OpenCore. Everything here was tested, verified, and documented to help you avoid the pitfalls we encountered.
-
-> **This is not a generic guide.** Every line here comes from a real, working installation on this exact hardware. If you have the same laptop, follow this exactly and it will work.
+This document details the **exact process** that successfully installed macOS Big Sur 11.7.10 on a Dell Inspiron 3521 using OpenCore. Everything here was tested and verified to work.
 
 ---
 
 ## Table of Contents
-
 1. [Hardware Specifications](#1-hardware-specifications)
-2. [What You Need — Complete List](#2-what-you-need--complete-list)
-3. [BIOS Settings — Do This First](#3-bios-settings--do-this-first)
-4. [Step 1: Format the USB Drive](#4-step-1-format-the-usb-drive)
-5. [Step 2: Download macOS Recovery](#5-step-2-download-macos-recovery)
-6. [Step 3: Build the OpenCore EFI](#6-step-3-build-the-opencore-efi)
-7. [Step 4: Apply Critical Config Fixes](#7-step-4-apply-critical-config-fixes)
-8. [Step 5: Copy Everything to USB](#8-step-5-copy-everything-to-usb)
-9. [Step 6: Boot and Install macOS](#9-step-6-boot-and-install-macos)
-10. [Step 7: Post-Install Setup](#10-step-7-post-install-setup)
-11. [The Critical Fixes — Why They Work](#11-the-critical-fixes--why-they-work)
-12. [PlatformInfo (SMBIOS)](#12-platforminfo-smbios)
+2. [Download These Folders to Your Desktop](#2-download-these-folders-to-your-desktop)
+3. [What Each Folder Does](#3-what-each-folder-does)
+4. [BIOS Settings (Do This First)](#4-bios-settings-do-this-first)
+5. [Step 1: Format the USB Drive](#5-step-1-format-the-usb-drive)
+6. [Step 2: Download macOS Recovery](#6-step-2-download-macos-recovery)
+7. [Step 3: Download & Extract OpenCore](#7-step-3-download--extract-opencore)
+8. [Step 4: Build the EFI Folder](#8-step-4-build-the-efi-folder)
+9. [Step 5: Edit config.plist](#9-step-5-edit-configplist)
+10. [Step 6: Copy Everything to USB](#10-step-6-copy-everything-to-usb)
+11. [Step 7: Boot & Install macOS](#11-step-7-boot--install-macos)
+12. [Step 8: Post-Install (Copy EFI to Internal Disk)](#12-step-8-post-install-copy-efi-to-internal-disk)
 13. [ESP Folder Structure](#13-esp-folder-structure)
-14. [Known Issues & Workarounds](#14-known-issues--workarounds)
-15. [Troubleshooting](#15-troubleshooting)
-16. [Tools & Resources Used](#16-tools--resources-used)
+14. [PlatformInfo](#14-platforminfo)
+15. [Known Issues & Workarounds](#15-known-issues--workarounds)
+16. [Troubleshooting](#16-troubleshooting)
 17. [FAQ](#17-faq)
+18. [Tools & Resources](#18-tools--resources)
 
 ---
 
@@ -33,876 +31,642 @@ This repository contains the **exact working EFI** and **step-by-step instructio
 | Component | Model |
 |-----------|-------|
 | Laptop | Dell Inspiron 3521 |
-| CPU | Intel Core i5-3337U (Ivy Bridge, 3rd Gen, 1.8 GHz) |
-| EFI Firmware | **IA32 (32-bit) — NOT x86_64** |
-| Graphics | Intel HD Graphics 4000 (integrated) |
+| CPU | Intel Core i5-3337U (Ivy Bridge, 3rd Gen) |
+| EFI Firmware | IA32 (32-bit) — **NOT x86_64** |
+| Graphics | Intel HD Graphics 4000 |
 | Audio | Realtek ALC282 |
 | WiFi | Qualcomm Atheros AR9485 |
-| Ethernet | Realtek RTL8100 |
-| Trackpad | Synaptics (PS/2) |
-| SMBIOS | MacBookAir6,2 |
+| USB | Kingston DataTraveler 16GB |
 
-### THE Most Important Thing About This Laptop
-
-> **The Dell 3521 uses a 32-bit (IA32) EFI firmware.**
->
-> Every computer has a small program built into the motherboard that runs before the operating system starts. This is called the **EFI firmware** (or BIOS). On most modern laptops, this firmware is 64-bit (x86_64). On the Dell 3521, it's **32-bit (IA32)**.
->
-> **Where do BOOTIA32.EFI and BOOTx64.EFI come from?**
->
-> When you download OpenCore from [GitHub](https://github.com/acidanthera/OpenCorePkg/releases), the zip file contains **two folders**:
-> - `x64/` — contains `EFI/BOOT/BOOTx64.EFI` (64-bit bootloader)
-> - `IA32/` — contains `EFI/BOOT/BOOTIA32.EFI` (32-bit bootloader)
->
-> Both files are **the same program** — just compiled for different CPU architectures. You're not losing any features by using the 32-bit version.
->
-> **What you need to do:**
-> - Download the IA32 build (not x64)
-> - When you extract it, `BOOTIA32.EFI` is **already there** in `IA32/EFI/BOOT/`
-> - You don't create it — you just use the one that's already included
-> - **Do NOT use** `BOOTx64.EFI` from the x64 folder — it won't work on this laptop
->
-> This is the #1 reason most people fail on this laptop — they use the 64-bit file and get a black screen.
-
-If you use the wrong EFI binary, you will get a black screen or the laptop will simply ignore the USB.
+### Critical Hardware Detail
+> **The Dell 3521 uses a 32-bit (IA32) EFI.**
+> This means `BOOTx64.EFI` / `OpenCore.efi` will NOT work.
+> You MUST use `BOOTIA32.EFI`.
 
 ---
 
-## 2. What You Need — Complete List
+## 2. Download These Folders to Your Desktop
 
-### Software
+Before starting, download **all of these** to your Desktop. You need every single one:
 
-| Tool | Version | Purpose | Where to Get It |
-|------|---------|---------|-----------------|
-| OpenCore | **1.0.5-RELEASE** (IA32 build) | Bootloader | [GitHub](https://github.com/acidanthera/OpenCorePkg/releases) — download `OpenCore-1.0.5-RELEASE.zip`, extract the `IA32` folder |
-| gibMacOS | Latest | Download macOS Recovery | [GitHub](https://github.com/corpnewt/gibMacOS) — clone or download ZIP |
-| ProperTree | Latest | Edit config.plist | [GitHub](https://github.com/corpnewt/ProperTree) — clone or download ZIP |
-| GenSMBIOS | Latest | Generate serial numbers | [GitHub](https://github.com/corpnewt/GenSMBIOS) — clone or download ZIP |
-| Rufus | Any recent version | Format USB as GPT FAT32 | [rufus.ie](https://rufus.ie) |
+| # | Folder/File | What It Is | Where to Get It |
+|---|-------------|------------|-----------------|
+| 1 | `gibMacOS-master/` | Downloads macOS Recovery from Apple | [GitHub](https://github.com/corpnewt/gibMacOS) — click Code → Download ZIP |
+| 2 | `OpenCorePkg-master/` | The OpenCore bootloader (IA32 build) | [GitHub](https://github.com/acidanthera/OpenCorePkg/releases) — download `OpenCore-1.0.5-RELEASE.zip` |
+| 3 | `ProperTree-master/` | Edits config.plist files correctly | [GitHub](https://github.com/corpnewt/ProperTree) — click Code → Download ZIP |
+| 4 | `MacOS/` (or `macOS_Recovery/`) | Where gibMacOS saves downloaded recovery files | Created automatically when you run gibMacOS |
+| 5 | `EFI/` | Your final OpenCore EFI folder (built in Step 4) | You build this yourself using files from folders 1-4 |
+| 6 | `com.apple.recovery.boot/` | Contains BaseSystem.dmg (~637 MB) | Created automatically when you run gibMacOS |
 
-### Hardware
-
-| Item | Details |
-|------|---------|
-| USB Drive | Any USB drive, **16GB or larger** recommended |
-| Second USB (optional) | For saving your EFI backup after install |
-
-### Files You Will Create
-
-| File | Where | Size |
-|------|-------|------|
-| `BaseSystem.dmg` | Downloaded by gibMacOS | ~637 MB |
-| `BaseSystem.chunklist` | Downloaded by gibMacOS | ~2.5 KB |
-| `BOOTIA32.EFI` | Already included in OpenCore IA32 download | ~300 KB |
-| `config.plist` | Edited with ProperTree | ~15 KB |
+### Your Desktop Should Look Like This:
+```
+Desktop/
+├── gibMacOS-master/          ← Download tool (has MakeInstall.bat inside)
+├── OpenCorePkg-master/       ← Bootloader files (has IA32/ folder inside)
+├── ProperTree-master/        ← Config editor (has ProperTree.bat inside)
+├── MacOS/                    ← Created by gibMacOS (recovery files land here)
+│   ├── EFI/                  ← Your built EFI folder goes here
+│   └── com.apple.recovery.boot/
+│       ├── BaseSystem.dmg
+│       └── BaseSystem.chunklist
+└── Dell-3521-Hackintosh/     ← This repo (the guide you're reading)
+```
 
 ---
 
-## 3. BIOS Settings — Do This First
+## 3. What Each Folder Does
 
-Before doing anything else, enter BIOS on the Dell 3521 and change these settings:
+### `gibMacOS-master/` — The Recovery Downloader
+- **What it does:** Downloads macOS Recovery files directly from Apple's servers
+- **Key files inside:**
+  - `MakeInstall.bat` — **THE MAIN TOOL** — creates the USB installer (formats + copies files)
+  - `gibMacOS.bat` — Downloads recovery files only (no USB creation)
+- **What you'll do with it:** Run `MakeInstall.bat` to format your USB and copy everything in one step
 
-**How to enter BIOS:** Power on → immediately press **F2** repeatedly (tap it quickly, about 2-3 times per second) until the BIOS screen appears. You'll see a blue/grey BIOS interface with tabs across the top.
+### `OpenCorePkg-master/` — The Bootloader
+- **What it does:** Contains the OpenCore bootloader that makes macOS think it's running on a real Mac
+- **Key files inside:**
+  - `X64/` — 64-bit build (DON'T USE THIS)
+  - `IA32/` — 32-bit build (**USE THIS ONE** — Dell 3521 needs 32-bit)
+  - `IA32/EFI/BOOT/BOOTIA32.EFI` — The actual bootloader file
+  - `IA32/EFI/OC/OpenCore.efi` — OpenCore core
+  - `IA32/EFI/OC/Drivers/` — Required driver files (HfsPlus.efi, OpenRuntime.efi, etc.)
+  - `IA32/EFI/OC/Kexts/` — Kernel extensions ( Lilu.kext, VirtualSMC.kext, etc.)
+  - `IA32/EFI/OC/ACPI/` — ACPI tables (SSDTs)
+  - `IA32/EFI/OC/config.plist` — The configuration file you'll edit
+  - `Utilities/ocvalidate/ocvalidate.exe` — Validates your config.plist
 
-**How to navigate BIOS:**
-- **Arrow keys** (← → ↑ ↓) to move between options
-- **Enter** to select or change a setting
-- **Esc** to go back
-- **F10** to save and exit (it will ask "Save configuration and exit?" → select "Yes")
+### `ProperTree-master/` — The Config Editor
+- **What it does:** Opens and edits `.plist` files (XML config files) correctly without breaking them
+- **Key files inside:**
+  - `ProperTree.bat` — **Double-click this to open ProperTree on Windows**
+  - `ProperTree.py` — The actual Python script (runs when you double-click .bat)
+- **What you'll do with it:** Open `config.plist` in it, make changes, save
 
-> **Important:** You only need to change the settings in the table below. Don't change anything else in BIOS.
+### `MacOS/` — Where Recovery Files Land
+- **What it does:** This folder is created by gibMacOS. It's where all your downloaded and built files end up
+- **Key files inside after running gibMacOS:**
+  - `EFI/` — The OpenCore EFI folder (copy this to USB)
+  - `com.apple.recovery.boot/` — Contains BaseSystem.dmg (copy this to USB)
 
-| Setting | Value | Why | Where to Find It |
-|---------|-------|-----|-------------------|
-| **SATA Operation** | **AHCI** | macOS does NOT support RAID/IDE. If this is set to RAID, you MUST change it. Warning: changing this may require a Windows reinstall. | System Configuration → SATA Operation |
-| **Secure Boot** | **Disabled** | macOS recovery images are unsigned. Secure Boot blocks them. | Security → Secure Boot |
-| **Boot Mode** | **UEFI** | OpenCore requires UEFI boot mode. | Boot Sequence → Boot List Option |
-| **Legacy Boot** | **Disabled** | Conflicts with UEFI. Disable it. | Boot Sequence → uncheck "Legacy" |
-| **VT-d** | **Disabled** (if option exists) | VT-d (I/O virtualization) conflicts with macOS. Some BIOS versions don't have this option — that's fine, we disable it in config.plist too. | Advanced → (if available) |
-
-> **WARNING about SATA Operation:** If your Windows is currently installed in RAID mode, changing to AHCI will make Windows unbootable. You have two options:
-> 1. Back up everything, do a clean Windows install in AHCI mode first, then proceed with Hackintosh
-> 2. Boot Windows in Safe Mode first, change to AHCI, let Windows reconfigure itself, then proceed
-
-> **After changing settings:** Press **F10** → select "Yes" to save and exit. The laptop will restart with the new settings.
-
----
-
-## 4. Step 1: Format the USB Drive
-
-The USB drive must be formatted as **GPT + FAT32**.
-
-> **WHY GPT instead of MBR?** The Dell 3521's IA32 EFI firmware reads GPT USBs much more reliably than MBR. MBR formatting can cause the USB to not appear in the boot menu at all, or the EFI to be invisible to the firmware.
-
-> **WHY 16GB USB for a 637MB file?** The download is small, but macOS Recovery needs a FAT32 partition with enough headroom. Some USB drives report different usable sizes. 16GB is the safe minimum — it works every time.
-
-### Method A: Using Rufus (Easiest)
-
-1. Download and open [Rufus](https://rufus.ie)
-2. Insert your USB drive
-3. In Rufus:
-   - **Device:** Select your USB drive (the dropdown at the top)
-   - **Boot selection:** Select **"Non bootable"** — this means Rufus won't add any boot files. We'll copy OpenCore's boot files manually in a later step. If you accidentally select a Windows ISO here, Rufus will format the USB in a way that won't work for Hackintosh.
-   - **Partition scheme:** **GPT** (this is critical — do NOT use MBR)
-   - **Target system:** **UEFI (non CSM)** (should auto-select when you pick GPT)
-   - **File system:** **FAT32** (do NOT use exFAT or NTFS)
-   - **Cluster size:** Default (leave as is)
-4. Click **START**
-5. Confirm any warnings
-
-### Method B: Using diskpart (Command Line)
-
-Open Command Prompt as Administrator and run:
-
-```
-diskpart
-list disk
-```
-
-Find your USB drive by size. In our case it was **Disk 3**. **BE VERY CAREFUL — selecting the wrong disk will destroy your data.**
-
-```
-select disk 3
-clean
-convert gpt
-create partition primary
-format fs=fat32 quick
-assign letter=F
-exit
-```
-
-> **CRITICAL:** Double-check the disk number before running `clean`. If you select your hard drive, you will lose all data. The USB drive is usually the one with the smallest size (8GB, 16GB, 32GB, etc.).
-
-### Verify the Format
-
-After formatting, open File Explorer and confirm:
-- The USB drive shows as **FAT32** (not exFAT, not NTFS)
-- The drive is empty
-- You can create folders on it
+### `com.apple.recovery.boot/` — The macOS Recovery Image
+- **What it does:** Contains the actual macOS installer that Apple's servers provide
+- **Key files inside:**
+  - `BaseSystem.dmg` (~637 MB) — The recovery image (this IS macOS)
+  - `BaseSystem.chunklist` — Integrity check file (small, always comes with .dmg)
+- **What you'll do with it:** Copy the entire folder to your USB drive
 
 ---
 
-## 5. Step 2: Download macOS Recovery
+## 4. BIOS Settings (Do This First)
 
-We use the **recovery method** (BaseSystem.dmg) rather than a full macOS installer.
+Before touching any tools, configure the Dell 3521's BIOS:
 
-> **WHY Recovery instead of Full Installer?** Recovery is ~637 MB vs ~5 GB for the full installer. Recovery downloads macOS from Apple's servers during installation. It's simpler, faster to prepare, and works perfectly for first-time installs. The full installer is only needed if you want to install offline or on multiple machines.
+1. **Shut down** the laptop completely
+2. **Power on** and immediately press **F2** repeatedly (before Windows loads)
+3. You're now in BIOS Setup. Navigate and change these settings:
 
-> **WHY gibMacOS?** Apple doesn't provide direct download links for macOS recovery images. gibMacOS queries Apple's software update catalog and extracts the exact recovery files for your chosen macOS version. It's the standard tool in the Hackintosh community for this.
+### Required BIOS Changes:
 
-### Download with gibMacOS
+| Setting | Where to Find It | What to Set It To |
+|---------|-------------------|-------------------|
+| **SATA Operation** | System Configuration → SATA Operation | **AHCI** (NOT RAID or IDE) |
+| **Secure Boot** | Security → Secure Boot | **Disabled** |
+| **Boot Mode** | Boot Sequence → Boot List Option | **UEFI** |
+| **Legacy Boot** | Boot Sequence → Boot List Option | **Uncheck/Disable** |
+| **VT-d** | Advanced (if available) | **Disabled** |
 
-1. Open the folder where you extracted `gibMacOS-master`
-2. Run `gibMacOS.bat` (Windows) or `gibMacOS.command` (macOS)
-3. A list of available macOS versions will appear
-4. Look for **Big Sur 11.7.10** (the latest Big Sur release)
-5. Note the number next to it (e.g., `18`)
-6. Type that number and press Enter
-7. The download will start — it downloads multiple small files, not one big DMG
-8. Wait for it to finish (may take 10-30 minutes depending on your internet)
+### How to Change Each Setting:
 
-### Convert Recovery to BaseSystem.dmg
+**SATA Operation (Most Important!):**
+1. BIOS → System Configuration → SATA Operation
+2. Change from "RAID On" to "AHCI"
+3. A warning will appear — click "Yes" to confirm
+4. **NOTE:** If Windows is installed in RAID mode, it may not boot after this change. You'll need to reinstall Windows or repair it. This is expected.
 
-After gibMacOS finishes downloading:
+**Secure Boot:**
+1. BIOS → Security → Secure Boot
+2. Uncheck "Secure Boot Enable" or set to "Disabled"
 
-1. Run `MakeInstall.bat` (Windows) or `MakeInstall.command` (macOS)
-2. This converts the downloaded files into `BaseSystem.dmg` and `BaseSystem.chunklist`
-3. The files will be created in a folder called `com.apple.recovery.boot` inside the gibMacOS output directory
+**Boot Mode:**
+1. BIOS → Boot Sequence → Boot List Option
+2. Select "UEFI" (uncheck "Legacy" if both are checked)
 
-### What You Should Have
-
-After this step, you should have:
-
-```
-com.apple.recovery.boot/
-├── BaseSystem.dmg          (~637 MB)
-└── BaseSystem.chunklist    (~2.5 KB)
-```
-
-> **NOTE:** `BaseSystem.dmg` is a **flat file**, not a folder. If it appears as a folder, something went wrong with the download. Re-run gibMacOS.
+4. **Press F10** to save and exit
+5. Laptop will restart
 
 ---
 
-## 6. Step 3: Build the OpenCore EFI
+## 5. Step 1: Format the USB Drive
 
-### 6.1 Extract OpenCore
+You have **two options** — pick whichever is easier for you:
 
-1. Unzip `OpenCore-1.0.5-RELEASE.zip` (right-click → Extract All, or use 7-Zip)
-2. Go into the `IA32` folder (NOT x64 — this is critical for the Dell 3521)
-3. Inside `IA32`, you'll see an `EFI` folder — copy this entire `EFI` folder to your USB drive's root (the top-level directory of the USB, e.g., `F:\`)
+### Option A: Use MakeInstall.bat (RECOMMENDED — Does Everything Automatically)
 
-> **What is "USB root"?** It's the top-level directory of your USB drive. If your USB is drive `F:\`, then the USB root is `F:\`. You're copying the `EFI` folder so it sits directly at `F:\EFI\`.
+This is the easiest method. It formats the USB AND copies all files in one step.
 
-### 6.2 Copy Kexts
+1. **Plug in your USB drive** (16GB or larger)
+2. **Open File Explorer** → navigate to `Desktop\gibMacOS-master\`
+3. **Double-click `MakeInstall.bat`**
+4. **A command prompt window opens** — it will ask you to select your USB drive
+5. **Type the number** next to your USB drive and press Enter
+6. **Wait** — the script will:
+   - Format the USB as MBR + FAT32
+   - Create the EFI partition
+   - Copy OpenCore boot files
+   - Copy recovery files
+7. **When it says "Done"**, press any key to close the window
+8. **Your USB is ready** — skip to Step 7 (Boot & Install macOS)
 
-**What is a kext?** A kext (kernel extension) is a driver for macOS. Just like Windows needs drivers for your GPU, WiFi, and audio, macOS needs kexts. Each kext handles one piece of hardware.
+### Option B: Use diskpart Manually (More Control)
 
-**How to download kexts:** For each kext in the table below, go to its GitHub page, click "Releases" on the right side, and download the latest `.zip` file. Extract the zip (right-click → Extract All, or use 7-Zip) — inside you'll find a `.kext` folder. Copy that `.kext` folder into `EFI/OC/Kexts/` on your USB.
+If Option A doesn't work or you want more control:
 
-> **What does a .kext folder look like?** After extracting, you'll see a folder like `Lilu.kext`. Inside it are `Contents/Info.plist` and `Contents/MacOS/Lilu`. You copy the **entire** `Lilu.kext` folder (not just the files inside it) into `EFI/OC/Kexts/`.
+1. **Open diskpart:**
+   - Press `Win + R` on your keyboard
+   - Type `diskpart` and press Enter
+   - Click "Yes" if Windows asks for permission
+   - A black command prompt window opens with `DISKPART>` prompt
 
-Download the latest versions of these kexts from their GitHub releases and copy them into `EFI/OC/Kexts/`:
+2. **Find your USB drive:**
+   ```
+   DISKPART> list disk
+   ```
+   This shows all disks. Look for your USB in the "Size" column. Note the disk number (e.g., Disk 2).
 
-| Kext | Purpose | Required? |
-|------|---------|-----------|
-| **Lilu.kext** | Core patching framework | **YES** — always first |
-| **VirtualSMC.kext** | SMC emulation | **YES** — required for macOS to boot |
-| **WhateverGreen.kext** | GPU patching | **YES** — for HD 4000 |
-| **AppleALC.kext** | Audio patching | **YES** — for ALC282 |
-| **VoodooPS2Controller.kext** | Keyboard/trackpad | **YES** — PS/2 input |
-| **VoodooRMI.kext** | Trackpad (RMI protocol) | **YES** — trackpad |
-| **VoodooSMBus.kext** | Trackpad (SMBus protocol) | **YES** — trackpad |
-| **ECEnabler.kext** | Battery status | Recommended |
-| **SMCBatteryManager.kext** | Battery monitoring | Recommended |
-| **SMCProcessor.kext** | CPU temperature | Recommended |
-| **SMCDellSensors.kext** | Dell fan sensors | Recommended |
-| **SMCLightSensor.kext** | Ambient light sensor | Optional |
-| **SMCSuperIO.kext** | Super I/O monitoring | Optional |
-| **BrightnessKeys.kext** | Brightness hotkeys | Recommended |
-| **RestrictEvents.kext** | Event restrictions | Optional |
-| **AirportBrcmFixup.kext** | Broadcom WiFi | If using Broadcom WiFi |
-| **RealtekRTL8100.kext** | Ethernet | **YES** — for wired internet |
-| **RealtekCardReader.kext** | SD card reader | Optional |
-| **RealtekCardReaderFriend.kext** | SD card reader support | Optional |
-| **BrcmBluetoothInjector.kext** | Broadcom Bluetooth | If using Broadcom BT |
-| **BrcmFirmwareData.kext** | Broadcom BT firmware | If using Broadcom BT |
-| **BrcmPatchRAM3.kext** | Broadcom BT patching | If using Broadcom BT |
-| **UTBMap.kext** | USB port map | **YES** — maps correct USB ports |
+3. **Select your USB** (replace `2` with your disk number):
+   ```
+   DISKPART> select disk 2
+   ```
 
-> **Order matters:** Always put `Lilu.kext` first in the config.plist Load Order, then `VirtualSMC.kext`, then everything else.
+4. **Erase everything on the USB:**
+   ```
+   DISKPART> clean
+   ```
 
-### 6.3 Copy Drivers
+5. **Convert to GPT partition table:**
+   ```
+   DISKPART> convert gpt
+   ```
 
-Copy these `.efi` files into `EFI/OC/Drivers/`:
+6. **Create a FAT32 partition:**
+   ```
+   DISKPART> create partition primary
+   DISKPART> format fs=fat32 quick label="OPENCORE"
+   DISKPART> assign letter=F
+   ```
 
-| Driver | Purpose | Required? | Where to Get It |
-|--------|---------|-----------|-----------------|
-| **HfsPlus.efi** | Read HFS+ formatted drives | **YES** | [GitHub](https://github.com/acidanthera/OcBinaryData/blob/master/Drivers/HfsPlus.efi) — download from Acidanthera's OcBinaryData repo |
-| **OpenRuntime.efi** | Runtime services | **YES** | Included in OpenCore download — already in `IA32/EFI/OC/Drivers/` |
-| **apfs_aligned.efi** | Read APFS drives | **YES** — critical for Big Sur | [GitHub](https://github.com/acidanthera/OcBinaryData/blob/master/Drivers/apfs_aligned.efi) — download from Acidanthera's OcBinaryData repo |
-| **ResetNvramEntry.efi** | NVRAM reset option | Recommended | Included in OpenCore download — already in `IA32/EFI/OC/Drivers/` |
-| **OpenCanopy.efi** | GUI picker (optional) | Optional — doesn't render on this hardware |
+7. **Exit diskpart:**
+   ```
+   DISKPART> exit
+   ```
 
-> **apfs_aligned.efi** is critical. Big Sur installs to APFS by default. Without this driver, OpenCore cannot read the APFS partition after installation. This driver was **NOT included** in the standard OpenCore 1.0.5 package — you need to download it separately from [Acidanthera's GitHub](https://github.com/acidanthera/OcBinaryData/blob/master/Drivers/apfs_aligned.efi) or find it in community builds.
+8. **Your USB is now formatted.** Now you need to copy files to it (see Step 6).
 
-### 6.4 Copy ACPI (SSDTs)
-
-> **WHY do I need SSDTs?** SSDTs (Secondary System Description Tables) are small ACPI patches that tell macOS about hardware that the Dell 3521's BIOS doesn't expose correctly. Without them, macOS won't know how to manage the battery, backlight, embedded controller, or CPU power states.
-
-> **Where do I get these SSDTs?** These are **pre-compiled .aml files** — you do NOT compile them yourself. Download them from the [Dortania Dell 3521 guide](https://dortania.github.io/OpenCore-Install-Guide/) or use the ones from the reference EFI in this repository. The .aml files are binary — just copy them, don't try to edit them. To get them from this repository, go to the `EFI/OC/ACPI/` folder and download each `.aml` file.
-
-Copy these `.aml` files into `EFI/OC/ACPI/`:
-
-| SSDT | Purpose |
-|------|---------|
-| **SSDT-EC.aml** | Embedded Controller — required for all laptops |
-| **SSDT-HPET.aml** | High Precision Timer — fixes IRQ conflicts |
-| **SSDT-IMEI.aml** | Intel MEI device — prevents IMEI errors |
-| **SSDT-PLUG.aml** | CPU power management |
-| **SSDT-PNLF.aml** | Backlight control |
-| **SSDT-ALS0.aml** | Ambient light sensor |
-| **SSDT-MCHC.aml** | Memory Controller Hub |
-| **SSDT-SBUS.aml** | SMBus controller |
-| **SSDT-XOSI.aml** | OS simulation — tricks BIOS into exposing all features |
-
-### 6.5 Create config.plist
-
-> **WHY ProperTree and not Notepad++?** config.plist is a binary plist file. Notepad++ and similar editors corrupt binary plist data. ProperTree is designed specifically for OpenCore config files — it preserves binary data, understands the plist format, and has the `OC Clean Snapshot` feature that auto-populates your config with the kexts, drivers, and SSDTs you've placed in the EFI folder.
-
-**Where does config.plist come from?** OpenCore ships with a `Sample.plist` inside the `EFI/OC/` folder. This is your starting point. The file is NOT blank — it's a complete template with all default values.
-
-1. Open `ProperTree` (run `ProperTree.bat` on Windows, or `ProperTree.command` on macOS)
-2. Go to `File → Open` and navigate to `EFI/OC/Sample.plist`
-3. Go to `File → Save As` and save it as `config.plist` in the same `EFI/OC/` folder (name it exactly `config.plist`)
-4. Now go to `File → OC Clean Snapshot` and select the `EFI/OC` folder — this auto-populates kexts, drivers, and SSDTs from what you've placed in the folder
-
-> **What if OC Clean Snapshot doesn't appear?** Make sure you opened the file with ProperTree (not Notepad or another editor). The "OC Clean Snapshot" option is in the File menu only when ProperTree detects it's an OpenCore config. If it still doesn't appear, your ProperTree version may be outdated — re-download from GitHub.
-
-> **What does OC Clean Snapshot do?** It scans your `EFI/OC/Kexts/`, `EFI/OC/Drivers/`, and `EFI/OC/ACPI/` folders and automatically adds them to the config.plist. Without this step, OpenCore won't know which kexts and drivers to load.
+> **WARNING:** `clean` destroys ALL data on the selected disk. Double-check the disk number before running it. If you select the wrong disk (like your main hard drive), you'll lose all your data.
 
 ---
 
-## 7. Step 4: Apply Critical Config Fixes
+## 6. Step 2: Download macOS Recovery
 
-These are the **non-negotiable** config.plist changes that made it boot. Skipping any one of these will cause boot loops, kernel panics, or a black screen.
+This step downloads the macOS Recovery image from Apple's servers.
 
-### Fix 1: CPU Power Management (Ivy Bridge)
+1. **Open File Explorer** → navigate to `Desktop\gibMacOS-master\`
+2. **Double-click `gibMacOS.bat`**
+3. **A command prompt window opens** with a menu like this:
+   ```
+   [1] Download macOS Recovery
+   [2] Make Install (USB)
+   [3] Exit
+   ```
+4. **Type `1` and press Enter** — this starts the download process
+5. **It will ask you to select a macOS version** — choose Big Sur (11.7.10 if available, or latest Big Sur)
+6. **Wait for the download** — it will download `BaseSystem.dmg` (~637 MB) and `BaseSystem.chunklist`
+7. **When it says "Done"**, the files are saved to `Desktop\MacOS\com.apple.recovery.boot\`
 
-Open config.plist in ProperTree and find `Kernel → Quirks`:
-
-> **What is CFG Lock?** CFG Lock is a BIOS setting that prevents the operating system from writing to certain CPU registers (MSR 0xE2). macOS needs to write to these registers for CPU power management. On the Dell 3521, this lock is enabled and cannot be disabled in BIOS. These quirks tell macOS to work around the lock instead.
-
-| Key | Value | Why |
-|-----|-------|-----|
-| `AppleCpuPmCfgLock` | **True** | Bypasses CFG lock so macOS can manage CPU power states without unlocking BIOS. |
-| `DummyPowerManagement` | **True** | Prevents kernel panics from AppleIntelCPUPowerManagement on locked firmware. |
-| `AppleXcpmExtraMsrs` | **True** | Required for Ivy Bridge CPU power management. |
-| `AppleXcpmCfgLock` | **True** | Additional CFG lock bypass for Ivy Bridge. |
-| `DisableIoMapper` | **True** | Disables VT-d which conflicts with macOS. |
-| `PanicNoKextDump` | **True** | Prevents kext dump on kernel panic — shows useful error instead. |
-| `PowerTimeoutKernelPanic` | **True** | Prevents panics from power timeout issues. |
-| `XhciPortLimit` | **True** | Temporarily lifts 15 USB port limit during installation. **Remove after install.** |
-| `DisableLinkeditJettison` | **True** | Required for Lilu to work properly. |
-
-### Fix 2: IgnoreInvalidFlexRatio
-
-Find `UEFI → Quirks`:
-
-| Key | Value | Why |
-|-----|-------|-----|
-| `IgnoreInvalidFlexRatio` | **True** | Fixes a BIOS bug on some Ivy Bridge boards where the flex ratio register contains invalid values, causing early boot failures. |
-
-### Fix 3: Remove CPU ACPI Tables
-
-Find `ACPI → Delete` and add these two entries:
-
-**How to add entries in ProperTree:**
-1. Click on the `Delete` key under `ACPI`
-2. Press `Ctrl+Insert` to add a new array item
-3. Click on the new item and press `Ctrl+Insert` to add a dict inside it
-4. Inside the dict, add the keys and values shown below
-
-```xml
-<key>ACPI</key>
-<dict>
-    <key>Delete</key>
-    <array>
-        <dict>
-            <key>All</key>
-            <false/>
-            <key>Count</key>
-            <integer>0</integer>
-            <key>Enabled</key>
-            <true/>
-            <key>OemTableId</key>
-            <data>AAAAAAAAAAA=</data>
-            <key>TableLength</key>
-            <integer>0</integer>
-            <key>TableSignature</key>
-            <data>Q1BQVA==</data>
-        </dict>
-        <dict>
-            <key>All</key>
-            <false/>
-            <key>Count</key>
-            <integer>0</integer>
-            <key>Enabled</key>
-            <true/>
-            <key>OemTableId</key>
-            <data>AAAAAAAAAAA=</data>
-            <key>TableLength</key>
-            <integer>0</integer>
-            <key>TableSignature</key>
-            <data>Q3B1MEk=</data>
-        </dict>
-    </array>
-</dict>
+### Where Are the Downloaded Files?
+After running gibMacOS, check this folder:
 ```
-
-**Why:** Removes `CpuPm` (CPUP) and `Cpu0Ist` (Cpu0) ACPI tables that conflict with macOS power management on Ivy Bridge. The base64 values are:
-- `Q1BQVA==` = `CPUP` (CpuPm table)
-- `Q3B1MEk=` = `Cpu0` (Cpu0Ist table)
-
-### Fix 4: HD 4000 Graphics + IMEI Spoof
-
-> **What is HD 4000?** The Dell 3521 uses an **Intel HD Graphics 4000** GPU (graphics processor) that's built into the CPU. This is the same GPU used in real MacBook Airs from 2012-2013. macOS has built-in support for it, but we need to tell macOS the correct configuration through these device properties.
-
-Find `DeviceProperties → Add`:
-
-**How to add entries in ProperTree:**
-1. Click on the `Add` key under `DeviceProperties`
-2. Press `Ctrl+Insert` to add a new dictionary entry
-3. Type the path (e.g., `PciRoot(0x0)/Pci(0x2,0x0)`) as the key
-4. Inside that dictionary, add the keys and values shown below
-
-**GPU (PciRoot(0x0)/Pci(0x2,0x0)):**
-
-| Key | Value (Base64) | Hex | Why |
-|-----|-----------------|-----|-----|
-| `AAPL,ig-platform-id` | `BwAAEA==` | `0x03006601` | Enables HD 4000 with correct framebuffer |
-| `device-id` | `RBAQAA==` | `0x01660000` | Spoofs HD 4000 device ID for compatibility |
-| `framebuffer-patch-enable` | `AQAAAA==` | `0x01000000` | Activates framebuffer patching |
-
-**IMEI (PciRoot(0x0)/Pci(0x1F,0x3)):**
-
-| Key | Value (Base64) | Hex | Why |
-|-----|-----------------|-----|-----|
-| `device-id` | `CgQAAA==` | `0x02150000` | Prevents "Missing Platform EFI" errors |
-
-> **How to set these in ProperTree:** Click on the key name, press `Ctrl+Shift+C` to change the value type to `Data`, then enter the base64 value.
-
-### Fix 5: SecureBootModel
-
-Find `Misc → Security`:
-
-| Key | Value | Why |
-|-----|-------|-----|
-| `SecureBootModel` | **Disabled** | Disables Apple Secure Boot to allow booting unsigned recovery images and older macOS versions. |
-
-### Fix 6: Clear Misc Entries
-
-Find `Misc → Entries` and **delete all entries** (set it to an empty array `()`).
-
-**Why:** Custom entries with hardcoded DevicePaths often cause `ocb: loadimage failed` errors. Letting OpenCore auto-detect `com.apple.recovery.boot` is more reliable.
-
-### Fix 7: PlatformInfo Settings
-
-Find `PlatformInfo`:
-
-| Key | Value | Why |
-|-----|-------|-----|
-| `Automatic` | **False** | Prevents OpenCore from auto-generating SMBIOS — use your custom values instead. |
-| `UpdateSMBIOSMode` | **Custom** | Required for Dell laptops — `Create` mode can corrupt SMBIOS data. |
-
-Find `PlatformInfo → Generic`:
-
-| Key | Value | Why |
-|-----|-------|-----|
-| `ProcessorType` | **1795** (0x0703) | Tells macOS this is an Ivy Bridge i5 processor. Default (0) may cause incorrect power management. |
-| `SystemProductName` | **MacBookAir6,2** | Closest match to i5-3337U with HD 4000. Correct framebuffer and power management profiles. |
-
-### Fix 8: Boot Arguments
-
-Find `NVRAM → Add → 7C436110-AB2A-4BBB-A880-FE41995C9F82` and set `boot-args` to:
-
+Desktop\MacOS\com.apple.recovery.boot\
+├── BaseSystem.dmg        (~637 MB — this is macOS)
+└── BaseSystem.chunklist  (small integrity file)
 ```
--v debug=0x100 keepsyms=1 alcid=29 igfxonln=1 -igfxnohdmi
-```
-
-| Argument | Purpose |
-|----------|---------|
-| `-v` | Verbose mode — shows text output during boot (essential for debugging) |
-| `debug=0x100` | Prevents automatic reboot on kernel panic — shows panic screen instead |
-| `keepsyms=1` | Keeps kernel symbols during panic — shows function names in panic log |
-| `alcid=29` | Audio layout ID for ALC282 — if audio doesn't work, try `1`, `2`, `3`, `13`, or `27` |
-| `igfxonln=1` | Forces Intel GPU online — fixes black screen after boot |
-| `-igfxnohdmi` | Disables HDMI output — prevents conflicts with integrated display |
-
-### Fix 9: Add Drivers to Config
-
-Make sure these drivers are listed in `UEFI → Drivers` and marked as **Enabled**:
-
-| Driver | Enabled | Notes |
-|--------|---------|-------|
-| `HfsPlus.efi` | True | Must be loaded first |
-| `OpenRuntime.efi` | True | Required |
-| `apfs_aligned.efi` | True | Required for APFS |
-| `ResetNvramEntry.efi` | True | Useful |
-| `OpenCanopy.efi` | True (optional) | Doesn't render on this hardware |
-
-### Validate with ocvalidate
-
-After all edits, run OpenCore's validation tool to check for errors. This tool comes with your OpenCore download — it's in the `Utilities` folder.
-
-**On Windows:**
-
-Open Command Prompt and navigate to where you extracted OpenCore, then run:
-
-```
-cd OpenCore-1.0.5-RELEASE\Utilities\ocvalidate
-ocvalidate.exe C:\path\to\your\EFI\OC\config.plist
-```
-
-**On macOS:**
-
-```
-cd /path/to/OpenCore-1.0.5-RELEASE/Utilities/ocvalidate
-./ocvalidate /Volumes/EFI/EFI/OC/config.plist
-```
-
-If it says `No issues found`, your config is clean. If there are errors, read the error messages carefully — they usually tell you exactly which key is wrong and what the expected value is. Fix them and re-run until clean.
-
-> **WHY validate?** A single typo in config.plist can cause a boot loop or kernel panic. ocvalidate catches structural errors before you try to boot.
 
 ---
 
-## 8. Step 5: Copy Everything to USB
+## 7. Step 3: Download & Extract OpenCore
 
-### Manual Method
+1. **Download OpenCore 1.0.5 IA32:**
+   - Go to: https://github.com/acidanthera/OpenCorePkg/releases
+   - Download `OpenCore-1.0.5-RELEASE.zip`
+   - Extract the ZIP file to your Desktop
+   - You'll get a folder called `OpenCore-1.0.5-RELEASE`
 
-Copy these two items to the **root** of your USB drive:
+2. **Find the IA32 folder:**
+   - Open `OpenCore-1.0.5-RELEASE\`
+   - Look for the `IA32\` folder (NOT `X64\`)
+   - This is the 32-bit version your Dell 3521 needs
 
+3. **Copy these files from IA32 to your working folder:**
+   - Copy the entire `IA32\EFI` folder to `Desktop\MacOS\EFI`
+   - Copy `IA32\Utilities\ocvalidate\ocvalidate.exe` somewhere accessible (you'll need it later)
+
+### What You Should Have Now:
 ```
-F:\                          ← USB root
-├── EFI\                     ← The entire EFI folder you just built
+Desktop\MacOS\
+├── EFI\                        ← From OpenCore IA32
 │   ├── BOOT\
-│   │   └── BOOTIA32.EFI    ← Already included in OpenCore IA32 download
+│   │   └── BOOTIA32.EFI       ← The bootloader (ALREADY INCLUDED — don't rename anything!)
 │   └── OC\
-│       ├── ACPI\            ← 9 SSDTs
-│       ├── Drivers\         ← HfsPlus.efi, OpenRuntime.efi, apfs_aligned.efi, etc.
-│       ├── Kexts\           ← 22+ kexts
-│       ├── Resources\       ← Audio, Font, Image, Label
-│       ├── Tools\           ← (empty or with diagnostic tools)
-│       └── config.plist     ← Your edited config
+│       ├── ACPI\               ← SSDTs (already included)
+│       ├── Drivers\            ← HfsPlus.efi, OpenRuntime.efi, etc. (already included)
+│       ├── Kexts\              ← Lilu.kext, VirtualSMC.kext, etc. (already included)
+│       ├── Resources\          ← Audio, Font, Image, Label (already included)
+│       ├── Tools\              ← OpenShell.efi (already included)
+│       └── config.plist        ← THE FILE YOU'LL EDIT
 └── com.apple.recovery.boot\
-    ├── BaseSystem.dmg      ← ~637 MB
-    └── BaseSystem.chunklist ← ~2.5 KB
-```
-
-### Using COPY_HAKINTOSH_USB.ps1 (Automated)
-
-If you have the PowerShell script, run it as Administrator:
-
-```powershell
-# Open PowerShell as Administrator
-Set-ExecutionPolicy Bypass -Scope Process
-.\COPY_HAKINTOSH_USB.ps1
-```
-
-The script will:
-1. Check that the USB is FAT32
-2. Clean old files from the USB
-3. Robocopy the EFI folder (multi-threaded, fast)
-4. Copy BaseSystem.dmg and BaseSystem.chunklist
-5. Verify all critical files are present
-
-### Rename OpenCore.efi to BOOTIA32.EFI
-
-This is the step most people miss. Here's what's happening:
-
-When you extracted the IA32 OpenCore download, the `EFI/BOOT/` folder **already contains** `BOOTIA32.EFI`. This file is the bootloader that your laptop's firmware looks for when booting. It's already included in the download — you don't create it.
-
-However, OpenCore also has a file called `OpenCore.efi` in `EFI/OC/`. This is the main OpenCore program. `BOOTIA32.EFI` in `EFI/BOOT/` is what starts the boot process — it loads `OpenCore.efi` which then reads your config.
-
-**What to do:** Make sure `BOOTIA32.EFI` exists in `EFI/BOOT/`. If it's not there (which shouldn't happen with the IA32 download), copy `OpenCore.efi` from `EFI/OC/` to `EFI/BOOT/` and rename it to `BOOTIA32.EFI`.
-
-**What to do:** Copy `OpenCore.efi` from `EFI/OC/` to `EFI/BOOT/` and rename it to `BOOTIA32.EFI`.
-
-```
-Source:  EFI\OC\OpenCore.efi     ← The bootloader file
-Dest:    EFI\BOOT\BOOTIA32.EFI  ← Where your laptop expects it
-```
-
-The file content is **identical** — you're just renaming it. Think of it like renaming `document.txt` to `report.txt`. The inside doesn't change, only the name.
-
-**Why does this matter?** Your laptop's 32-bit firmware searches for a file called `BOOTIA32.EFI` in the `EFI/BOOT/` folder. If it doesn't find it, the laptop says "no bootable device" or shows a black screen. The file name is the key — the firmware doesn't know or care about `OpenCore.efi`.
-
-### Verify Critical Files
-
-Before booting, confirm these files exist on the USB:
-
-```
-✅ F:\EFI\BOOT\BOOTIA32.EFI
-✅ F:\EFI\OC\config.plist
-✅ F:\EFI\OC\OpenCore.efi
-✅ F:\EFI\OC\Drivers\HfsPlus.efi
-✅ F:\EFI\OC\Drivers\OpenRuntime.efi
-✅ F:\EFI\OC\Drivers\apfs_aligned.efi
-✅ F:\EFI\OC\Kexts\Lilu.kext
-✅ F:\EFI\OC\Kexts\VirtualSMC.kext
-✅ F:\com.apple.recovery.boot\BaseSystem.dmg
-✅ F:\com.apple.recovery.boot\BaseSystem.chunklist
+    ├── BaseSystem.dmg
+    └── BaseSystem.chunklist
 ```
 
 ---
 
-## 9. Step 6: Boot and Install macOS
+## 8. Step 4: Build the EFI Folder
 
-### 9.1 Boot from USB
+Now you need to add the missing files to your EFI folder. Here's exactly what to do:
+
+### 4.1 Copy SSDTs to ACPI Folder
+The SSDTs (Secondary System Description Tables) are pre-compiled `.aml` files that patch your Dell's ACPI tables for macOS.
+
+**Where to get them:** The SSDTs are already included in the OpenCore IA32 download under `EFI\OC\ACPI\`. Check if these files exist:
+- `SSDT-EC.aml` — Embedded Controller
+- `SSDT-HPET.aml` — High Precision Event Timer
+- `SSDT-PLUG.aml` — CPU Power Management
+- `SSDT-PNLF.aml` — Laptop backlight control
+
+If any are missing, download them from [Dortania's ACPI guide](https://dortania.github.io/OpenCore-Install-Guide/acer.html).
+
+### 4.2 Download Missing Drivers
+Some drivers are NOT included in the standard OpenCore download. You need to download them separately:
+
+**Download `apfs_aligned.efi`:**
+- This driver lets OpenCore read APFS partitions (macOS uses APFS)
+- Download from: https://github.com/acidanthera/OcBinaryData/blob/master/Drivers/HfsPlus.efi
+- Actually, download `apfs_aligned.efi` from: https://github.com/acidanthera/OcBinaryData/blob/master/Drivers/apfs_aligned.efi
+- Save it to `Desktop\MacOS\EFI\OC\Drivers\`
+
+**Check these drivers exist in `EFI\OC\Drivers\`:**
+- `HfsPlus.efi` — reads HFS+ partitions (included in OpenCore)
+- `OpenRuntime.efi` — runtime services (included in OpenCore)
+- `OpenCanopy.efi` — GUI picker (included in OpenCore)
+- `apfs_aligned.efi` — reads APFS partitions (**NOT included** — download this!)
+
+### 4.3 Check Kexts
+Kexts are macOS kernel extensions. Check these exist in `EFI\OC\Kexts\`:
+- `Lilu.kext` — patches macOS on the fly (ALWAYS needed)
+- `VirtualSMC.kext` — emulates Apple's SMC chip (ALWAYS needed)
+- `WhateverGreen.kext` — graphics patches (for HD 4000)
+- `AppleALC.kext` — audio patches (for ALC282)
+- `IntelMausi.kext` — Ethernet (if your laptop has Intel Ethernet)
+- `USBMap.kext` or `USBPorts.kext` — USB port mapping
+- `NVMeFix.kext` — NVMe SSD fixes (if using NVMe)
+
+### 4.4 Download WiFi Kext (If Needed)
+The Dell 3521's AR9485 WiFi needs a specific kext:
+
+**Option A: AirportItlwm.kext (native WiFi, recommended):**
+- Download from: https://github.com/OpenIntelWireless/itlwm/releases
+- Get the Big Sur version
+- Extract and copy `AirportItlwm.kext` to `EFI\OC\Kexts\`
+
+**Option B: itlwm.kext + HeliPort app:**
+- Download `itlwm.kext` from the same link above
+- Install `HeliPort.app` on macOS (it's a WiFi menu bar app)
+- Copy `itlwm.kext` to `EFI\OC\Kexts\`
+
+---
+
+## 9. Step 5: Edit config.plist
+
+This is the most important step. You need to edit `config.plist` with specific values for the Dell 3521.
+
+### 5.1 Open ProperTree
+1. **Open File Explorer** → navigate to `Desktop\ProperTree-master\`
+2. **Double-click `ProperTree.bat`**
+3. **A black window opens** — this is ProperTree (a plist editor)
+4. **Press `Ctrl + O`** (or File → Open)
+5. **Navigate to** `Desktop\MacOS\EFI\OC\config.plist`
+6. **Select it** and click "Open"
+
+### 5.2 Run OC Clean Snapshot
+Before editing, you need to clean the config.plist and add all your kexts/drivers:
+
+1. **In ProperTree**, press `Ctrl + Shift + R` (or File → OC Clean Snapshot)
+2. **A file dialog opens** — navigate to `Desktop\MacOS\EFI\OC\config.plist`
+3. **Select it** and click "Open"
+4. **This automatically:**
+   - Removes outdated entries
+   - Adds all kexts from the Kexts folder
+   - Adds all drivers from the Drivers folder
+   - Adds all SSDTs from the ACPI folder
+5. **Press `Ctrl + S`** to save
+
+### 5.3 Make These Exact Changes
+
+Now make each change manually in ProperTree. Navigate the tree by clicking the arrows:
+
+#### Fix 1: Remove Broken Custom Entry (CRITICAL)
+1. Navigate to: `Misc` → `Entries`
+2. **Delete everything inside `Entries`** — set it to empty array `()`
+3. **Why:** A broken custom Entry causes "ocb: loadimage failed" error
+
+#### Fix 2: Set ProcessorType
+1. Navigate to: `PlatformInfo` → `Generic`
+2. Find `ProcessorType`
+3. Change value from `0` to `1795`
+4. **Why:** Tells macOS this is an Ivy Bridge i5 CPU (hex 0x0703 = decimal 1795)
+
+#### Fix 3: Set Automatic to False
+1. Navigate to: `PlatformInfo`
+2. Find `Automatic`
+3. Change from `True` to `False`
+4. **Why:** Prevents OpenCore from overwriting your SMBIOS settings
+
+#### Fix 4: Set UpdateSMBIOSMode to Custom
+1. Navigate to: `PlatformInfo`
+2. Find `UpdateSMBIOSMode`
+3. Change from `Create` to `Custom`
+4. **Why:** Preserves your SMBIOS data instead of recreating it
+
+#### Fix 5: Update boot-args
+1. Navigate to: `NVRAM` → `Add` → `7C436110-AB2A-4BBB-A880-FE41995C9F82`
+2. Find `boot-args`
+3. Change the value to:
+   ```
+   -v debug=0x100 keepsyms=1 alcid=29 igfxonln=1 -igfxnohdmi
+   ```
+4. **What each flag does:**
+   - `-v` — verbose mode (shows text during boot instead of Apple logo)
+   - `debug=0x100` — stops reboot on kernel panic (lets you read the error)
+   - `keepsyms=1` — keeps debug symbols in panic reports
+   - `alcid=29` — audio layout ID for ALC282
+   - `igfxonln=1` — fixes HD 4000 online status
+   - `-igfxnohdmi` — disables HDMI output (prevents conflicts)
+
+#### Fix 6: Enable AppleXcpmExtraMsrs
+1. Navigate to: `Kernel` → `Quirks`
+2. Find `AppleXcpmExtraMsrs`
+3. Change from `False` to `True`
+4. **Why:** Ivy Bridge needs this for CPU power management
+
+#### Fix 7: Enable AppleCpuPmCfgLock
+1. Navigate to: `Kernel` → `Quirks`
+2. Find `AppleCpuPmCfgLock`
+3. Change from `False` to `True`
+4. **Why:** Ivy Bridge laptops have locked MSR registers
+
+#### Fix 8: Enable DummyPowerManagement
+1. Navigate to: `Kernel` → `Quirks`
+2. Find `DummyPowerManagement`
+3. Change from `False` to `True`
+4. **Why:** Prevents kernel panics from AppleIntelCPUPowerManagement
+
+#### Fix 9: Enable AppleCpuPmCfgLock (if not already done)
+Same as Fix 7.
+
+#### Fix 10: Set SecureBootModel to Disabled
+1. Navigate to: `Misc` → `Security`
+2. Find `SecureBootModel`
+3. Change from `Default` to `Disabled`
+4. **Why:** Disables Apple Secure Boot to allow unsigned recovery images
+
+#### Fix 11: Enable XhciPortLimit
+1. Navigate to: `Kernel` → `Quirks`
+2. Find `XhciPortLimit`
+3. Change from `False` to `True`
+4. **Why:** Temporarily lifts the 15 USB port limit during installation
+5. **REMOVE THIS AFTER INSTALL** — use proper USB port mapping instead
+
+#### Fix 12: Set IgnoreInvalidFlexRatio
+1. Navigate to: `UEFI` → `Quirks`
+2. Find `IgnoreInvalidFlexRatio`
+3. Change from `False` to `True`
+4. **Why:** Fixes a BIOS bug on some Ivy Bridge boards
+
+#### Fix 13: Delete CpuPm and Cpu0Ist Tables
+1. Navigate to: `ACPI` → `Delete`
+2. Add two entries:
+   ```xml
+   <dict>
+       <key>TableSignature</key>
+       <data>Q1BQVA==</data>
+   </dict>
+   <dict>
+       <key>TableSignature</key>
+       <data>Q3B1MEk=</data>
+   </dict>
+   ```
+3. **Why:** Removes CPU power tables that conflict with macOS
+
+#### Fix 14: Add HD 4000 Graphics Properties
+1. Navigate to: `DeviceProperties` → `Add`
+2. Add key: `PciRoot(0x0)/Pci(0x2,0x0)`
+3. Add these values inside it:
+   - `AAPL,ig-platform-id` = `BwAAEA==` (base64 for 0x03006601)
+   - `device-id` = `RBAQAA==` (base64 for 0x01660000)
+   - `framebuffer-patch-enable` = `AQAAAA==` (base64 for 0x00000001)
+4. **Why:** Enables HD 4000 graphics with correct framebuffer
+
+#### Fix 15: Add IMEI Spoof
+1. Navigate to: `DeviceProperties` → `Add`
+2. Add key: `PciRoot(0x0)/Pci(0x1F,0x3)`
+3. Add value: `device-id` = `CgQAAA==` (base64 for 0x02000000)
+4. **Why:** Prevents "Missing Platform EFI" errors
+
+#### Fix 16: Add apfs_aligned.efi Driver
+1. Navigate to: `UEFI` → `Drivers`
+2. Add a new entry:
+   ```xml
+   <dict>
+       <key>Arguments</key>
+       <string></string>
+       <key>Comment</key>
+       <string></string>
+       <key>Enabled</key>
+       <true/>
+       <key>LoadEarly</key>
+       <false/>
+       <key>Path</key>
+       <string>apfs_aligned.efi</string>
+   </dict>
+   ```
+3. **Why:** Lets OpenCore read APFS partitions
+
+### 5.4 Save and Validate
+1. **Press `Ctrl + S`** to save config.plist
+2. **Close ProperTree**
+3. **Open Command Prompt** and run:
+   ```
+   Desktop\OpenCore-1.0.5-RELEASE\Utilities\ocvalidate\ocvalidate.exe Desktop\MacOS\EFI\OC\config.plist
+   ```
+4. **If it says "No issues found"** — your config is correct!
+5. **If it reports errors** — go back to ProperTree and fix them
+
+---
+
+## 10. Step 6: Copy Everything to USB
+
+Now you need to copy your built EFI folder and recovery files to the USB drive.
+
+### Option A: Use the PowerShell Script (RECOMMENDED)
+
+1. **Make sure your USB is formatted** (Step 5)
+2. **Open File Explorer** → navigate to `Desktop\Hackintosh_Dell_3521\06_Working_Files\`
+3. **Right-click `COPY_HAKINTOSH_USB.ps1`** → select "Run with PowerShell"
+4. **If Windows asks for permission** → click "Yes"
+5. **Wait for the script to finish** — it will:
+   - Copy EFI folder to USB
+   - Copy BaseSystem.dmg to USB
+   - Verify all files are present
+6. **When it says "USB READY!"** — you're done!
+
+### Option B: Manual Copy
+
+1. **Plug in your USB drive** (note the drive letter, e.g., F:)
+2. **Copy the EFI folder:**
+   - Open `Desktop\MacOS\EFI\` → select everything inside
+   - Copy to `F:\EFI\`
+3. **Copy the recovery files:**
+   - Open `Desktop\MacOS\com.apple.recovery.boot\`
+   - Copy the entire folder to `F:\`
+4. **Verify the final structure:**
+   ```
+   F:\ (USB Drive)
+   ├── EFI\
+   │   ├── BOOT\
+   │   │   └── BOOTIA32.EFI
+   │   └── OC\
+   │       ├── ACPI\
+   │       ├── Drivers\
+   │       ├── Kexts\
+   │       ├── Resources\
+   │       ├── Tools\
+   │       └── config.plist
+   └── com.apple.recovery.boot\
+       ├── BaseSystem.dmg
+       └── BaseSystem.chunklist
+   ```
+
+---
+
+## 11. Step 7: Boot & Install macOS
 
 1. **Plug the USB into the Dell 3521**
-2. **Power on** the laptop
-3. **Immediately press F12** repeatedly — tap it quickly about 5-10 times (2-3 times per second) starting the moment you press the power button. You need to press it before the Dell logo disappears.
-4. Select your USB drive under **UEFI Boot** (it may show as "UEFI: Kingston DataTraveler" or similar)
-5. The OpenCore picker should appear — it will be a **text/CLI picker** (not GUI, see [Known Issues](#14-known-issues--workarounds))
+2. **Restart the laptop**
+3. **Press F12 repeatedly** during boot (before Windows loads)
+4. **A boot menu appears** — select your USB drive (it may say "UEFI: Kingston..." or similar)
+5. **OpenCore picker appears** — you'll see a text-based menu
+6. **Press Spacebar** to show hidden entries
+7. **Select "macOS Recovery"** (or "macOS Installer")
+8. **macOS Recovery loads** — you'll see a Apple logo or text scrolling
+9. **Open Disk Utility** (from the Recovery menu)
+10. **Select your internal hard drive** → click "Erase"
+11. **Name it** (e.g., "Macintosh HD") → Format: **APFS** → Scheme: **GUID Partition Map**
+12. **Click "Erase"** → wait for it to finish → click "Done"
+13. **Close Disk Utility** → go back to Recovery menu
+14. **Select "Reinstall macOS"** → follow the prompts
+15. **The installation begins** — the laptop will reboot multiple times (this is normal!)
+16. **On each reboot**, press F12 → select USB → OpenCore picker appears → let it auto-select the next stage
+17. **After the final reboot**, macOS Setup Assistant appears → follow the setup wizard
 
-> **What does the OpenCore picker look like?** It's a black screen with white text. You'll see entries like:
-> ```
-> 1. macOS Recovery
-> 2. macOS (external)
-> 3. Windows (if installed)
-> ```
-> Use the **arrow keys** (↑ ↓) to highlight an entry, then press **Enter** to select it. The highlighted entry will be inverted (white background, black text).
-
-### 9.2 Boot into Recovery
-
-1. In the OpenCore picker, you should see **"macOS Recovery"** or **"macOS (external)"** listed on screen
-2. **Use the arrow keys** (↑ ↓) on your keyboard to move between entries. The selected entry will be highlighted.
-3. **Press Enter** to select the highlighted entry
-4. **If you don't see any entries:** Press **Spacebar** — this reveals hidden entries. OpenCore sometimes hides entries by default. After pressing Spacebar, you should see more options appear.
-5. Wait — verbose text will scroll on screen. This is normal with `-v` in boot-args.
-
-> **What does Verbose mode look like?** You'll see white text scrolling rapidly on a black screen. Lines like `ACPI: Mac...`, `kext done`, `EB:...` will fly by. This is normal — it's macOS loading drivers and initializing hardware. If it stops scrolling and stays black for more than 2 minutes, something went wrong (see Troubleshooting).
-
-6. The macOS Utilities (Recovery) screen should appear — a window with options like "Restore from Time Machine", "Reinstall macOS", "Disk Utility", etc. You'll use your trackpad or mouse to click options here.
-
-### 9.3 Format the Target Disk
-
-1. Open **Disk Utility** from the Recovery menu
-2. Click **View → Show All Devices** (this is in the menu bar at the top — critical step)
-   > **WHY is this critical?** By default, Disk Utility only shows **volumes** (like "Macintosh HD"), not the **physical disk** (like "Samsung SSD 860"). You need to see the physical disk to format it correctly. Without "Show All Devices", you'll only see volumes and won't be able to select the correct format options.
-3. Select the **physical disk** (not a partition) — it's the top-level entry in the left sidebar, usually showing the brand name like "APPLE HDD" or "Samsung SSD" or "KINGSTON".
-4. Click **Erase**:
-   - **Name:** Macintosh HD (or anything you want)
-   - **Format:** **APFS** (recommended for Big Sur) or Mac OS Extended (Journaled)
-   - **Scheme:** **GUID Partition Map**
-5. Click **Erase** and wait
-6. Close Disk Utility
-
-> **WHY GUID Partition Map?** macOS requires GPT. The "Scheme" dropdown must be GUID Partition Map, not Master Boot Record. If you don't see this option, you selected a volume instead of the physical disk — go back to step 2.
-
-> **What if my disk doesn't appear?** This usually means AHCI mode isn't enabled in BIOS. Go back to BIOS settings and verify SATA Operation = AHCI. If it's set to RAID, macOS cannot see the disk.
-
-### 9.4 Install macOS
-
-1. Back in the Recovery menu, select **"Reinstall macOS Big Sur"**
-2. Agree to the terms
-3. Select the disk you just formatted
-4. **Wait** — the installation will take 20-60 minutes depending on your disk speed
-5. The laptop will **reboot multiple times** — this is normal
-
-### 9.5 Handle Reboots
-
-**This is the part nobody explains clearly.** Here's exactly what happens:
-
-The installation process is **fully automatic**. After you click "Install" and the first progress bar finishes, the laptop will reboot on its own. You do NOT need to press F12 or select anything on each reboot. Here's the full sequence:
-
-1. **You click "Install macOS Big Sur"** → progress bar fills → laptop reboots automatically
-2. **First reboot:** Laptop restarts. It automatically boots from the internal disk (where macOS files were just copied). You see verbose text scroll, then another progress bar. **Do not touch anything.** Wait.
-3. **Second reboot:** Same thing — laptop restarts on its own, boots automatically. Verbose text → progress bar. **Do not touch anything.** Wait.
-4. **Third reboot:** Same thing — automatic reboot, automatic boot. This may happen 3-5 times total.
-5. **Final reboot:** The laptop restarts and boots into **macOS Setup Assistant** (the "Welcome" screen with language selection).
-
-> **Key point:** You only need to press F12 **once** — at the very beginning to boot from USB for the first time. After that, the entire installation handles itself. The laptop reboots on its own and boots from the correct device automatically.
-
-> **How to know it's done:** When you see the macOS language selection screen (Welcome screen), installation is complete.
-
-> **WHY does it reboot multiple times?** macOS installation happens in stages: first it copies files to the disk, then it configures the system, then it finalizes. Each reboot completes a stage. This is normal macOS behavior — even real Macs reboot multiple times during installation.
-
-> **What if it gets stuck?** If the laptop reboots but doesn't continue the installation (e.g., it shows the Apple logo and progress bar for more than 30 minutes with no movement), it may have booted from the wrong device. Press F12 during the next reboot and manually select the internal disk or USB.
-
-### 9.6 Complete Setup
-
-1. Follow the macOS Setup Assistant (language, region, keyboard, etc.)
-2. When prompted, create your user account
-3. You should land on the macOS desktop
-
-**Congratulations — macOS Big Sur is installed on your Dell 3521!**
+### Important Notes During Installation:
+- **Do NOT touch the OpenCore picker** on reboots — let it auto-select the next stage
+- **The laptop WILL reboot 3-4 times** — this is normal macOS behavior
+- **If the screen goes black**, press any key or wait 30 seconds — it's still loading
+- **If you see a "prohibited" sign**, your config.plist is wrong — go back to Step 5
 
 ---
 
-## 10. Step 7: Post-Install Setup
+## 12. Step 8: Post-Install (Copy EFI to Internal Disk)
 
-### 10.1 Copy EFI to Internal Disk
+After macOS is installed and working, you need to copy the EFI to the internal disk so you can boot without the USB.
 
-The USB is only needed for booting right now. You need to copy the EFI to your internal disk's EFI partition so you can boot without the USB.
+### 8.1 Mount the Internal EFI Partition
+1. **Boot into macOS** from the USB
+2. **Open Terminal** (Applications → Utilities → Terminal)
+3. **Run this command:**
+   ```bash
+   sudo diskutil mount /dev/disk0s1
+   ```
+4. **Enter your password** when prompted
+5. **The EFI partition mounts** as `/Volumes/EFI`
 
-**Step 1: Mount the EFI partition of your internal disk**
+### 8.2 Copy EFI to Internal Disk
+1. **Open Finder** → navigate to the USB drive
+2. **Copy the entire `EFI` folder** from USB to `/Volumes/EFI/`
+3. **Make sure `BOOTIA32.EFI` is in the right place:**
+   ```
+   /Volumes/EFI/EFI/BOOT/BOOTIA32.EFI
+   ```
 
-In Terminal (macOS):
+### 8.3 Remove USB and Test
+1. **Restart the laptop** → remove the USB
+2. **The laptop should boot from the internal disk** with OpenCore
+3. **If it doesn't boot**, plug the USB back in and try again
 
-```bash
-# Step A: Find your internal disk
-diskutil list
-```
-
-Look for the disk that matches your internal SSD/HDD (usually `disk0`). You'll see something like:
-
-```
-/dev/disk0 (internal):
-   #:     TYPE NAME                    SIZE       IDENTIFIER
-   0:      GUID_partition_scheme       256.0 GB   disk0
-   1:                        EFI EFI   209.7 MB   disk0s1
-   2:          Apple_APFS Container... 255.8 GB   disk0s2
-```
-
-The line with `EFI` and `disk0s1` is what you need.
-
-```bash
-# Step B: Mount the EFI partition
-sudo diskutil mount /dev/disk0s1
-```
-
-> **What if it says "Volume already mounted"?** That's fine — it means the EFI partition is already visible in Finder. Skip to Step 2.
-
-> **What if it asks for a password?** Type your macOS user password (the one you set up during installation). You won't see characters appear as you type — this is normal. Press Enter.
-
-> **WHY do I need to mount it?** The EFI partition is a special partition that macOS hides by default. It contains the bootloader. You need to mount it to copy OpenCore's files into it.
-
-**Step 2: Copy EFI from USB to internal disk**
-
-You need two Finder windows open:
-1. Open Finder → look for the USB's EFI volume in the sidebar (it should already be mounted from earlier)
-2. Open a second Finder window → look for the internal disk's EFI volume (you just mounted it)
-
-In the USB's EFI volume, you'll see an `EFI` folder. Drag that entire `EFI` folder to the internal disk's EFI volume.
-
-> **Or use Terminal:** `sudo cp -R /Volumes/EFI/EFI /Volumes/EFI\ 1/`
-
-> **What if there's already an EFI folder on the internal disk?** If you had Windows, there will be an existing `EFI` folder with Windows Boot Manager files. You can either:
-> - **Keep both:** Copy OpenCore's EFI folder alongside the existing one. Both can coexist.
-> - **Replace:** Delete the old EFI folder first, then copy the new one. This removes Windows boot capability (you'd need to fix it later).
-> 
-> **Recommended:** Keep both. OpenCore and Windows Boot Manager can coexist in the same EFI partition.
-
-**Step 3: Verify the structure**
-
-Make sure the internal EFI partition has this structure:
-
-```
-/dev/disk0s1 (EFI)
-└── EFI
-    ├── BOOT
-    │   └── BOOTIA32.EFI
-    └── OC
-        ├── ACPI/
-        ├── Drivers/
-        ├── Kexts/
-        ├── Resources/
-        └── config.plist
-```
-
-### 10.2 Test Internal Boot (IMPORTANT — Don't Skip!)
-
-Before removing the USB, test that the laptop can boot from the internal disk:
-
-1. **Shut down** the laptop completely (Apple menu → Shut Down)
-2. **Remove the USB drive** from the laptop
-3. **Power on** the laptop normally
-4. **If it boots into macOS** — **success!** The internal EFI is working. You're done.
-5. **If it doesn't boot** (black screen, "No bootable device", or loops back to BIOS):
-   - Plug the USB back in
-   - Boot from USB (press F12, select USB)
-   - Open Terminal and run:
-     ```bash
-     diskutil list
-     ```
-   - Check that `disk0s1` (EFI partition) is listed and has a size (~200 MB)
-   - If it's not listed or shows as "not mounted", run:
-     ```bash
-     sudo diskutil mount /dev/disk0s1
-     ```
-   - Open Finder → look for the EFI volume → open `EFI/BOOT/` → confirm `BOOTIA32.EFI` exists
-   - If the file is missing, re-copy the EFI folder from the USB
-   - Shut down, remove USB, try again
-
-> **WHY test this?** If you remove the USB and the internal EFI doesn't work, you'll be stuck with an unbootable laptop. Always test first. If it fails, you still have the USB to fall back on.
-
-### 10.3 Remove XhciPortLimit After USB Mapping
-
-During installation, we set `XhciPortLimit = True` to bypass macOS's 15 USB port limit. After installation, you should create a proper USB port map and remove this workaround.
-
-**What is USB mapping?** macOS only allows 15 USB ports per controller. The Dell 3521 has more physical ports than this. USB mapping tells macOS exactly which ports to use, so you don't hit the limit.
-
-**How to create a USB port map:**
-
-1. Download [USBToolBox](https://github.com/USBToolBox/USBToolBox) (Windows tool) — it's a free utility that detects which USB ports are active on your laptop
-2. Run `USBToolBox.exe` — a window will open showing USB controller information
-3. Click "Discover Ports" — this starts the port detection process
-4. Plug a USB device (like a flash drive) into each USB port one by one — USBToolBox will detect which ports are active and show them in a list
-5. Click "Generate ACPI" to create a custom USB port map kext (a file called `UTBMap.kext`)
-6. Copy the generated `UTBMap.kext` to `EFI/OC/Kexts/` (replace the existing one if present)
-7. In config.plist, set `XhciPortLimit` to `False`:
-
-```xml
-<key>XhciPortLimit</key>
-<false/>
-```
-
-The Dell 3521 typically has: 2x USB 3.0 (rear), 1x USB 2.0 (right side), 1x USB 2.0 (internal, webcam).
-
-### 10.4 Audio
-
-If audio doesn't work, try different `alcid` values in boot-args:
-
-| Layout ID | Notes |
-|-----------|-------|
-| `alcid=1` | Generic ALC282 |
-| `alcid=2` | Generic ALC282 |
-| `alcid=3` | Generic ALC282 |
-| `alcid=13` | Dell-specific |
-| `alcid=27` | Dell-specific |
-| `alcid=29` | **What we used** — works on this laptop |
-
-Edit boot-args in config.plist at `NVRAM → Add → 7C436110-AB2A-4BBB-A880-FE41995C9F82 → boot-args`.
-
-### 10.5 WiFi
-
-The Qualcomm Atheros AR9485 may need:
-
-- **AirportItlwm.kext** (native WiFi support for Big Sur) — preferred — download from [GitHub](https://github.com/itlwm/AirportItlwm/releases) — choose the Big Sur version
-- **itlwm.kext** + **HeliPort.app** (alternative method) — download from [GitHub](https://github.com/itlwm/itlwm/releases)
-
-Note: AR9485 support varies by macOS version. Big Sur should work with the right kext.
-
-### 10.6 Ethernet
-
-The Realtek RTL8100 should work with `RealtekRTL8100.kext` which is already in the EFI.
-
-### 10.7 Brightness Control
-
-Brightness keys should work with `BrightnessKeys.kext` + `SSDT-PNLF.aml` (both already in the EFI).
+### 8.4 Remove XhciPortLimit (After USB Mapping)
+After you've created a proper USB port map:
+1. Open `config.plist` on the internal EFI partition
+2. Navigate to: `Kernel` → `Quirks`
+3. Find `XhciPortLimit` → change to `False`
+4. Save and restart
 
 ---
 
-## 11. The Critical Fixes — Why They Work
+## 13. ESP Folder Structure
 
-This section explains **why** each fix is needed. Understanding this helps you debug if something goes wrong.
-
-### 11.1 IA32 EFI (BOOTIA32.EFI)
-
-The Dell 3521's firmware is 32-bit. It can only execute 32-bit EFI binaries. Standard OpenCore builds provide `BOOTx64.EFI` (64-bit) and `BOOTIA32.EFI` (32-bit). You must use the IA32 variant.
-
-### 11.2 CPU Power Management
-
-Ivy Bridge laptops have **locked MSR 0xE2 registers** — the BIOS prevents the OS from writing to them. macOS expects to manage CPU power states directly. These quirks work around the lock:
-
-- `AppleCpuPmCfgLock` — allows macOS to manage CPU without unlocking BIOS
-- `DummyPowerManagement` — prevents kernel panics from AppleIntelCPUPowerManagement
-- `AppleXcpmExtraMsrs` — provides extra MSRs that Ivy Bridge needs
-- `AppleXcpmCfgLock` — additional CFG lock bypass
-
-### 11.3 ACPI Table Deletion
-
-The Dell 3521's BIOS exposes `CpuPm` and `Cpu0Ist` ACPI tables. These conflict with macOS's own CPU power management. Deleting them forces macOS to use its own implementation.
-
-### 11.4 HD 4000 Graphics
-
-Intel HD 4000 requires specific framebuffer configuration:
-
-- `ig-platform-id` `0x03006601` — tells macOS which framebuffer to use for HD 4000
-- `device-id` `0x01660000` — spoofs the GPU device ID for compatibility
-- `framebuffer-patch-enable` — enables framebuffer patching
-- `igfxonln=1` boot arg — forces the GPU online (fixes black screen)
-- `-igfxnohdmi` boot arg — disables HDMI to prevent conflicts
-
-### 11.5 IMEI Spoof
-
-The Intel Management Engine Interface (IMEI) device on Ivy Bridge laptops can cause "Missing Platform EFI" errors. Spoofing its device-id prevents this.
-
-### 11.6 SecureBootModel = Disabled
-
-macOS recovery images are not signed with Apple's Secure Boot keys. Disabling SecureBootModel allows OpenCore to load unsigned boot images.
-
-### 11.7 Clear Misc Entries
-
-Hardcoded device paths in `Misc.Entries` are fragile — they depend on exact USB port positions and GUIDs. Clearing entries and letting OpenCore auto-detect `com.apple.recovery.boot` is more reliable.
-
-### 11.8 UpdateSMBIOSMode = Custom
-
-The `Create` mode can corrupt SMBIOS data on Dell laptops. `Custom` mode preserves existing SMBIOS information while updating only what's needed.
+### USB (F:\)
+```
+F:\
+├── EFI\
+│   ├── BOOT\
+│   │   └── BOOTIA32.EFI          ← 32-bit OpenCore bootloader
+│   └── OC\
+│       ├── ACPI\
+│       │   ├── SSDT-EC.aml       ← Embedded Controller patch
+│       │   ├── SSDT-HPET.aml     ← High Precision Event Timer patch
+│       │   ├── SSDT-PLUG.aml     ← CPU Power Management patch
+│       │   └── SSDT-PNLF.aml     ← Backlight control patch
+│       ├── Drivers\
+│       │   ├── HfsPlus.efi       ← HFS+ partition support
+│       │   ├── OpenCanopy.efi    ← GUI picker (may not render on IA32)
+│       │   ├── OpenRuntime.efi   ← Runtime services
+│       │   ├── OpenShell.efi     ← EFI Shell
+│       │   ├── ResetNvramEntry.efi ← NVRAM reset
+│       │   └── apfs_aligned.efi  ← APFS partition support
+│       ├── Kexts\
+│       │   ├── AppleALC.kext     ← Audio (ALC282)
+│       │   ├── IntelMausi.kext   ← Ethernet
+│       │   ├── Lilu.kext         ← Core patching engine
+│       │   ├── USBMap.kext       ← USB port map
+│       │   ├── VirtualSMC.kext   ← SMC emulation
+│       │   └── WhateverGreen.kext ← Graphics (HD 4000)
+│       ├── Resources\
+│       │   ├── Audio\
+│       │   ├── Font\
+│       │   ├── Image\
+│       │   └── Label\
+│       ├── Tools\
+│       │   └── OpenShell.efi
+│       └── config.plist          ← THE CRITICAL FILE
+└── com.apple.recovery.boot\
+    ├── BaseSystem.dmg            ← macOS recovery image
+    └── BaseSystem.chunklist      ← Integrity check file
+```
 
 ---
 
-## 12. PlatformInfo (SMBIOS)
-
-### What is SMBIOS?
-
-**SMBIOS** (System Management BIOS) is a set of information that tells macOS what kind of computer you have. When macOS boots, it reads this information to determine which drivers to load, how to manage power, and what features to enable.
-
-The problem is: if macOS sees "Dell Inspiron 3521", it won't know what to do — it only knows real Mac hardware. So we **spoof** (fake) the SMBIOS to make macOS think you have a real Mac with the same hardware.
-
-**Think of it like this:** You're wearing a name tag that says "John Smith" instead of your real name. macOS is the bouncer — it only lets "John Smith" into the club. You're not changing who you are, just what your name tag says.
-
-### Why MacBookAir6,2
-
-The MacBookAir6,2 is the closest real Mac to the Dell 3521's hardware:
-- CPU: i5-3337U (Ivy Bridge) — matches
-- GPU: HD 4000 — matches
-- RAM: Up to 8GB DDR3 — matches
-- Screen: 1366x768 — matches
-
-### Example Serial Numbers
+## 14. PlatformInfo
 
 ```xml
 <key>PlatformInfo</key>
@@ -917,170 +681,71 @@ The MacBookAir6,2 is the closest real Mac to the Dell 3521's hardware:
         <string>F7301094-8AC7-43E0-9B57-6C9D8BCC8A38</string>
         <key>SystemProductName</key>
         <string>MacBookAir6,2</string>
-        <key>ProcessorType</key>
-        <integer>1795</integer>
     </dict>
 </dict>
 ```
 
-> **IMPORTANT:** These are example serials from our build. **Generate your own** using GenSMBIOS to avoid iCloud conflicts. Never use someone else's serial numbers.
+**Why MacBookAir6,2:** This is the closest match to the i5-3337U (Ivy Bridge) with HD 4000 graphics. It has the correct framebuffer and power management profiles.
 
-### How to Generate Your Own Serials
+> **IMPORTANT:** These are example serials. Generate your own using GenSMBIOS to avoid iCloud conflicts with other Hackintosh users.
 
-**What is GenSMBIOS?** GenSMBIOS is a tool that generates fake serial numbers that look like real Apple serial numbers. You need unique serial numbers for your Hackintosh — using someone else's will cause iCloud conflicts.
-
-1. Download [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS) from GitHub
-2. Extract and run `GenSMBIOS.bat` (Windows) or `GenSMBIOS.command` (macOS)
-3. Select option 1 to download MacSerial (the serial number generator)
-4. Select option 3 and type `MacBookAir6,2` — this generates serial numbers for that Mac model
-5. Copy the generated MLB, Serial, and UUID into your config.plist under `PlatformInfo → Generic`
-6. Do NOT use the "Check Coverage" feature — Apple may flag the serial
-
-> **WHY generate your own?** Each Mac has unique serial numbers. If you use the same serial as someone else, both systems will conflict when trying to sign into iCloud, iMessage, or FaceTime. Your serial must be unique to your machine.
-
----
-
-## 13. ESP Folder Structure
-
-Here's the exact structure of our working EFI on the USB:
-
-```
-USB (F:\)
-├── EFI/
-│   ├── BOOT/
-│   │   └── BOOTIA32.EFI              ← OpenCore.efi renamed (32-bit!)
-│   └── OC/
-│       ├── ACPI/
-│       │   ├── SSDT-ALS0.aml
-│       │   ├── SSDT-EC.aml
-│       │   ├── SSDT-HPET.aml
-│       │   ├── SSDT-IMEI.aml
-│       │   ├── SSDT-MCHC.aml
-│       │   ├── SSDT-PLUG.aml
-│       │   ├── SSDT-PNLF.aml
-│       │   ├── SSDT-SBUS.aml
-│       │   └── SSDT-XOSI.aml
-│       ├── Drivers/
-│       │   ├── HfsPlus.efi
-│       │   ├── OpenRuntime.efi
-│       │   ├── ResetNvramEntry.efi
-│       │   └── apfs_aligned.efi
-│       ├── Kexts/
-│       │   ├── AirportBrcmFixup.kext/
-│       │   ├── AppleALC.kext/
-│       │   ├── BrcmBluetoothInjector.kext/
-│       │   ├── BrcmFirmwareData.kext/
-│       │   ├── BrcmPatchRAM3.kext/
-│       │   ├── BrightnessKeys.kext/
-│       │   ├── ECEnabler.kext/
-│       │   ├── Lilu.kext/
-│       │   ├── RealtekCardReader.kext/
-│       │   ├── RealtekCardReaderFriend.kext/
-│       │   ├── RealtekRTL8100.kext/
-│       │   ├── RestrictEvents.kext/
-│       │   ├── SMCBatteryManager.kext/
-│       │   ├── SMCDellSensors.kext/
-│       │   ├── SMCLightSensor.kext/
-│       │   ├── SMCProcessor.kext/
-│       │   ├── SMCSuperIO.kext/
-│       │   ├── UTBMap.kext/
-│       │   ├── VirtualSMC.kext/
-│       │   ├── VoodooPS2Controller.kext/
-│       │   ├── VoodooRMI.kext/
-│       │   ├── VoodooSMBus.kext/
-│       │   └── WhateverGreen.kext/
-│       ├── Resources/
-│       │   ├── Audio/
-│       │   ├── Font/
-│       │   ├── Image/
-│       │   └── Label/
-│       ├── Tools/
-│       └── config.plist
-└── com.apple.recovery.boot/
-    ├── BaseSystem.dmg                ← ~637 MB (not in git — too large)
-    └── BaseSystem.chunklist          ← ~2.5 KB
-```
+### How to Generate Your Own Serials:
+1. **Download GenSMBIOS:** https://github.com/corpnewt/GenSMBIOS
+2. **Extract to Desktop**
+3. **Double-click `GenSMBIOS.bat`**
+4. **Type `1`** (Generate SMBIOS) → press Enter
+5. **Type `MacBookAir6,2`** → press Enter
+6. **Copy the values** it generates into your config.plist:
+   - `TypeSerial` → `SystemSerialNumber`
+   - `TypeMLB` → `MLB`
+   - `TypeSmUUID` → `SystemUUID`
 
 ---
 
-## 14. Known Issues & Workarounds
+## 15. Known Issues & Workarounds
 
-### 14.1 OpenCanopy GUI Not Rendering
+### 15.1 OpenCanopy GUI Not Rendering
+- **Problem:** PickerMode=Auto does not show the GUI picker despite OpenCanopy.efi being loaded
+- **Workaround:** Use CLI picker (it works fine, just less pretty)
+- **Possible cause:** IA32 compatibility issue with OpenCanopy rendering
 
-- **Problem:** The fancy graphical picker (OpenCanopy.efi) does not render on the Dell 3521's IA32 EFI
-- **Symptom:** You see a text/CLI picker instead of icons
-- **Workaround:** The CLI picker works fine — it's just less pretty
-- **Possible cause:** IA32 compatibility issue with OpenCanopy's rendering engine
-- **Status:** Not fixed — cosmetic issue only
+### 15.2 USB Must Be GPT
+- The Dell 3521's IA32 EFI reads GPT USBs better than MBR
+- Use `diskpart` or Rufus to create GPT FAT32
 
-### 14.2 USB Must Be GPT
-
-- The Dell 3521's IA32 EFI reads GPT USBs much more reliably than MBR
-- Always use GPT + FAT32 when formatting the USB
-- Rufus makes this easy — just select "GPT" in the partition scheme
-
-### 14.3 Recovery vs Install Media
-
-- We used the **recovery method** (BaseSystem.dmg), not a full macOS installer
-- Recovery is simpler (~637 MB vs ~5 GB) and works perfectly for first-time installs
-- The full installer is not necessary for this laptop
-
-### 14.4 BaseSystem.dmg Was a Directory (Not a File)
-
-- **Problem:** During one USB build, `BaseSystem.dmg` was created as a directory instead of a flat file
-- **Cause:** Incorrect robocopy source path — pointed to a directory instead of the file
-- **Fix:** Verify `BaseSystem.dmg` is a flat file before copying. Check with `Get-Item BaseSystem.dmg | Select-Object PSIsContainer` — should be `False`
-
-### 14.5 Robocopy "Directory Name is Invalid" Error
-
-- **Problem:** `LAST_USB_BUILD.log` showed robocopy errors for BaseSystem.dmg: "The directory name is invalid"
-- **Cause:** Same as above — robocopy was treating a file as a directory
-- **Fix:** Use flat file copy for BaseSystem.dmg, not robocopy directory mirroring
+### 15.3 Recovery vs Install Media
+- We used the **recovery method** (BaseSystem.dmg) not a full macOS installer
+- Recovery is simpler and works well for first-time installs
 
 ---
 
-## 15. Troubleshooting
+## 16. Troubleshooting
 
 ### Boot Loop (Returns to Picker)
+**Symptoms:** OpenCore picker appears, you select an option, but it just returns to the picker.
 
-**Symptoms:** OpenCore shows the picker, you select "macOS Recovery", screen goes black, then returns to the picker.
-
-**How to fix:**
-
-1. **Check BOOTIA32.EFI exists:** On the USB, open `EFI/BOOT/` — is `BOOTIA32.EFI` there? If not, you forgot to copy it.
-
-2. **Check SecureBootModel:** Open `config.plist` in ProperTree → find `Misc → Security` → make sure `SecureBootModel` is set to `Disabled` (not `Default` or `Secure`).
-
-3. **Check USB format:** The USB must be GPT + FAT32. If you're unsure, re-format with Rufus (select GPT, FAT32).
-
-4. **Press Spacebar:** In the OpenCore picker, press **Spacebar** — this reveals hidden entries. Sometimes the recovery entry is hidden by default.
-
-5. **Check apfs_aligned.efi:** Open `EFI/OC/Drivers/` — is `apfs_aligned.efi` there? Without it, OpenCore can't read the APFS partition.
-
-6. **Re-download recovery:** The BaseSystem.dmg may be corrupted. Re-run gibMacOS to download a fresh copy.
-
-7. **Run ocvalidate:** Open Command Prompt → navigate to your OpenCore `Utilities/ocvalidate` folder → run `ocvalidate.exe <path-to-config.plist>`. Fix any errors it reports.
+**Fixes:**
+1. **Check SecureBootModel:** Open `config.plist` in ProperTree → find `Misc → Security` → make sure `SecureBootModel` is set to `Disabled` (not `Default` or `Secure`).
+2. **Check USB format:** The USB must be GPT + FAT32. If you're unsure, re-format with diskpart (see Step 1).
+3. **Press Spacebar:** In the OpenCore picker, press **Spacebar** — this reveals hidden entries. Sometimes the recovery entry is hidden by default.
+4. **Check apfs_aligned.efi:** Open `EFI/OC/Drivers/` — is `apfs_aligned.efi` there? Without it, OpenCore can't read the APFS partition.
+5. **Re-download recovery:** The BaseSystem.dmg may be corrupted. Re-run gibMacOS to download a fresh copy.
+6. **Run ocvalidate:** Open Command Prompt → navigate to your OpenCore `Utilities/ocvalidate` folder → run `ocvalidate.exe <path-to-config.plist>`. Fix any errors it reports.
 
 ### Kernel Panic on Boot
+**Symptoms:** Text scrolls on screen, then the laptop reboots or shows a panic message.
 
-**Symptoms:** Text scrolls on screen, then the laptop reboots or shows a panic message (a wall of text with "Kernel Panic" at the top).
-
-**How to fix:**
-
-1. **Take a photo of the panic message** — the top line usually says what went wrong. You'll need this to search for solutions.
-
-2. **Boot with verbose mode** (you already have `-v` in boot-args, so you should see text output). If the panic happens too fast, add `debug=0x100` to boot-args — this stops the reboot so you can read the message.
-
+**Fixes:**
+1. **Take a photo of the panic message** — the top line usually says what went wrong.
+2. **Boot with verbose mode** (you already have `-v` in boot-args, so you should see text output). If the panic happens too fast, add `debug=0x100` to boot-args.
 3. **To edit boot-args:** On the USB, open `EFI/OC/config.plist` in ProperTree → find `NVRAM → Add → 7C436110-AB2A-4BBB-A880-FE41995C9F82` → find `boot-args` → add `debug=0x100` to the end.
-
 4. **Common causes and fixes:**
    - **Missing Lilu.kext or VirtualSMC.kext** → download them and copy to `EFI/OC/Kexts/`
-   - **Wrong ig-platform-id** → check `DeviceProperties → Add → PciRoot(0x0)/Pci(0x2,0x0)` — `AAPL,ig-platform-id` should be `BwAAEA==`
-   - **AppleCpuPmCfgLock not set** → check `Kernel → Quirks` — `AppleCpuPmCfgLock` should be `True`
+   - **Wrong ig-platform-id** → check `DeviceProperties → Add → PciRoot(0x0)/Pci(0x2,0x0)` → `AAPL,ig-platform-id` should be `BwAAEA==`
+   - **AppleCpuPmCfgLock not set** → check `Kernel → Quirks` → `AppleCpuPmCfgLock` should be `True`
    - **Missing apfs_aligned.efi** → copy it to `EFI/OC/Drivers/`
 
 ### Black Screen After Boot
-
 **Symptoms:** Verbose text stops, screen goes black, but laptop stays on.
 
 **Fixes:**
@@ -1091,7 +756,6 @@ USB (F:\)
 - Try connecting an external monitor via VGA
 
 ### No WiFi
-
 **Symptoms:** WiFi icon shows "No Hardware Installed" or similar.
 
 **Fixes:**
@@ -1100,7 +764,6 @@ USB (F:\)
 - AR9485 may need `itlwm` instead of `AirportItlwm` depending on the version
 
 ### No Audio
-
 **Symptoms:** No sound from speakers or headphone jack.
 
 **Fixes:**
@@ -1109,7 +772,6 @@ USB (F:\)
 - Check System Preferences → Sound → Output
 
 ### USB Not Working
-
 **Symptoms:** USB drives or keyboard/mouse not detected.
 
 **Fixes:**
@@ -1118,7 +780,6 @@ USB (F:\)
 - The Dell 3521 typically has: 2x USB 3.0 (rear), 1x USB 2.0 (right side), 1x USB 2.0 (internal, webcam)
 
 ### Battery Status Not Showing
-
 **Symptoms:** Battery percentage not shown in menu bar.
 
 **Fixes:**
@@ -1127,30 +788,102 @@ USB (F:\)
 
 ---
 
-## 16. Tools & Resources Used
+## 17. FAQ
+
+### Q: Can I use a different macOS version?
+**A:** Yes, but you'll need to adjust kext versions. This EFI was built for Big Sur 11.7.10. For Monterey or Ventura, you'll need newer versions of Lilu, WhateverGreen, AppleALC, etc. The config.plist fixes remain the same.
+
+### Q: Can I use this EFI on a different Dell laptop?
+**A:** The config.plist fixes are specific to the Dell 3521's Ivy Bridge hardware. Other Dell laptops with similar hardware (i5-3337U, HD 4000) may work, but you'll need to adjust SSDTs, USB port maps, and possibly audio layout IDs.
+
+### Q: Why is the USB drive formatted as GPT instead of MBR?
+**A:** The Dell 3521's IA32 EFI firmware has better compatibility with GPT partition tables. MBR can cause boot failures or the EFI not being detected.
+
+### Q: What if I don't have BaseSystem.chunklist?
+**A:** gibMacOS always downloads both `BaseSystem.dmg` and `BaseSystem.chunklist`. If you're missing the chunklist, re-run gibMacOS MakeInstall.
+
+### Q: Do I need to remove the USB after installation?
+**A:** Not immediately. First, copy the EFI to the internal disk's EFI partition. Then test that the laptop can boot from the internal disk without the USB. Once confirmed, you can remove the USB.
+
+### Q: Can I use this with Windows on the same laptop?
+**A:** Yes. The EFI partition is separate from the Windows partition. You can dual-boot by having both Windows Boot Manager and OpenCore in the EFI partition, or by using the F12 boot menu to choose which OS to boot.
+
+### Q: What if my USB doesn't show up in the F12 boot menu?
+**A:**
+- Make sure the USB is GPT + FAT32
+- Make sure UEFI boot is enabled in BIOS
+- Try a different USB port
+- Re-format the USB with diskpart
+- Verify `BOOTIA32.EFI` exists at `EFI\BOOT\BOOTIA32.EFI`
+
+### Q: How do I update OpenCore in the future?
+**A:**
+1. Download the latest OpenCore release
+2. Extract the IA32 folder
+3. Replace `EFI\BOOT\BOOTIA32.EFI` and `EFI\OC\OpenCore.efi` with the new versions
+4. Copy any new kext versions
+5. Re-apply config.plist changes (or use your existing config.plist — it should be compatible)
+6. Run ocvalidate to check for errors
+
+### Q: What's the difference between Recovery and Full Installer?
+**A:**
+- **Recovery** (what we used): Downloads macOS from Apple's servers during installation. ~637 MB download. Simpler setup.
+- **Full Installer**: Contains the complete macOS installer. ~5 GB download. Can install offline.
+- Both work. Recovery is recommended for first-time installs because it's smaller and simpler.
+
+### Q: Why does the installation reboot multiple times?
+**A:** macOS installation happens in stages: (1) copy files to disk, (2) configure the system, (3) finalize settings. Each reboot completes a stage. Even real Macs reboot multiple times during installation — this is normal macOS behavior, not a Hackintosh issue.
+
+### Q: Do I need to select "macOS Installer" on each reboot?
+**A:** No. The process is automatic. After you boot from USB, OpenCore auto-detects the next stage of installation and selects it. You just need to boot from USB each time (press F12, select USB). Don't touch the OpenCore picker — let it auto-select.
+
+### Q: What does verbose mode look like?
+**A:** White text scrolling on a black screen. Lines like `ACPI: Mac...`, `kext done`, `EB:...` will fly by. This is normal — it's macOS loading. If it stops for more than 2 minutes, see Troubleshooting.
+
+### Q: Why can't I just format the USB with Windows File Explorer?
+**A:** Windows File Explorer formats as NTFS or exFAT by default. macOS EFI requires FAT32, and the Dell 3521 requires GPT (not MBR). Rufus or diskpart are the only reliable ways to get GPT + FAT32.
+
+### Q: What if my disk doesn't appear in Disk Utility?
+**A:** This usually means AHCI mode isn't enabled in BIOS. Go back to BIOS settings and verify SATA Operation = AHCI. If it's set to RAID, macOS cannot see the disk. You may need to reinstall Windows after changing this.
+
+### Q: What if I get "ocb: loadimage failed" error?
+**A:** This means OpenCore can't find the boot files. Common causes:
+- `Misc.Entries` has hardcoded paths — clear it (set to empty array `()`)
+- `BOOTIA32.EFI` is missing from `EFI/BOOT/`
+- USB is MBR instead of GPT
+- Re-run ocvalidate to check for config errors
+
+### Q: How do I know if my config.plist is correct?
+**A:** Run `ocvalidate` — it checks for structural errors. If it says "No issues found", the structure is correct. If macOS still doesn't boot, the issue is likely a value that's technically valid but wrong for your hardware (like wrong ig-platform-id). Check the Troubleshooting section.
+
+### Q: Can I use this EFI on a different Ivy Bridge laptop?
+**A:** Possibly, but you'll need to adjust: SSDTs (different laptops need different ACPI patches), USB port map (UTBMap.kext), audio layout ID (alcid boot-arg), and SMBIOS (may need a different Mac model). The core config fixes (CPU power management, HD 4000 graphics) are the same for all Ivy Bridge laptops.
+
+---
+
+## 18. Tools & Resources
 
 ### Essential Tools
 
-| Tool | What It Does | Location |
-|------|--------------|----------|
+| Tool | What It Does | Where to Get It |
+|------|--------------|-----------------|
 | **OpenCore 1.0.5 IA32** | Bootloader | [GitHub](https://github.com/acidanthera/OpenCorePkg/releases) |
 | **gibMacOS** | Downloads macOS Recovery | [GitHub](https://github.com/corpnewt/gibMacOS) |
 | **ProperTree** | Edits config.plist | [GitHub](https://github.com/corpnewt/ProperTree) |
 | **GenSMBIOS** | Generates serial numbers | [GitHub](https://github.com/corpnewt/GenSMBIOS) |
-| **Rufus** | Formats USB as GPT FAT32 | [rufus.ie](https://rufus.ie) |
 | **diskpart** | Windows disk partitioning | Built into Windows |
 | **ocvalidate** | Validates config.plist | Inside OpenCore download |
+| **USBToolBox** | USB port mapping | [GitHub](https://github.com/USBToolBox/USBToolBox) |
 
 ### Custom Scripts (This Project)
 
 | Script | What It Does |
 |--------|--------------|
-| `COPY_HAKINTOSH_USB.ps1` | Copies EFI + recovery to USB (FAT32), verifies files |
+| `COPY_HAKINTOSH_USB.ps1` | Copies EFI + recovery to USB, verifies files |
 | `apply_theyronecodes_fixes.py` | Applies all config.plist fixes automatically |
 | `check_gpt.py` | Verifies backup GPT table on disk via raw disk read |
-| `format_usb.txt` | diskpart script: select disk 3, clean, convert gpt, format fat32 |
-| `format_usb_disk3.txt` | diskpart script variant with letter=U |
-| `create_part.txt` | diskpart: create partition + format (no clean) |
+| `build_usb_makeinstall.py` | Advanced USB builder with MBR + legacy boot support |
+| `build_usb.py` | Simple USB builder (copies EFI + recovery) |
 
 ### Resources
 
@@ -1160,96 +893,6 @@ USB (F:\)
 | Dell 3521 Hackintosh Guide | [macOS on Dell Inspiron 3521](https://www.tonymacx86.com/threads/dell-inspiron-3521-macos-big-sur.316107/) |
 | OpenCore Documentation | [dortania.github.io/docs](https://dortania.github.io/docs/latest/) |
 | USBToolBox | [USBToolBox GitHub](https://github.com/USBToolBox/USBToolBox) |
-
----
-
-## 17. FAQ
-
-### Q: Can I use a different macOS version?
-
-**A:** Yes, but you'll need to adjust kext versions. This EFI was built for Big Sur 11.7.10. For Monterey or Ventura, you'll need newer versions of Lilu, WhateverGreen, AppleALC, etc. The config.plist fixes remain the same.
-
-### Q: Can I use this EFI on a different Dell laptop?
-
-**A:** The config.plist fixes are specific to the Dell 3521's Ivy Bridge hardware. Other Dell laptops with similar hardware (i5-3337U, HD 4000) may work, but you'll need to adjust SSDTs, USB port maps, and possibly audio layout IDs.
-
-### Q: Why is the USB drive formatted as GPT instead of MBR?
-
-**A:** The Dell 3521's IA32 EFI firmware has better compatibility with GPT partition tables. MBR can cause boot failures or the EFI not being detected.
-
-### Q: What if I don't have BaseSystem.chunklist?
-
-**A:** gibMacOS always downloads both `BaseSystem.dmg` and `BaseSystem.chunklist`. If you're missing the chunklist, re-run gibMacOS MakeInstall.
-
-### Q: Do I need to remove the USB after installation?
-
-**A:** Not immediately. First, copy the EFI to the internal disk's EFI partition. Then test that the laptop can boot from the internal disk without the USB. Once confirmed, you can remove the USB.
-
-### Q: Can I use this with Windows on the same laptop?
-
-**A:** Yes. The EFI partition is separate from the Windows partition. You can dual-boot by having both Windows Boot Manager and OpenCore in the EFI partition, or by using the F12 boot menu to choose which OS to boot.
-
-### Q: What if my USB doesn't show up in the F12 boot menu?
-
-**A:** 
-- Make sure the USB is GPT + FAT32
-- Make sure UEFI boot is enabled in BIOS
-- Try a different USB port
-- Re-format the USB with Rufus
-- Verify `BOOTIA32.EFI` exists at `EFI\BOOT\BOOTIA32.EFI`
-
-### Q: How do I update OpenCore in the future?
-
-**A:** 
-1. Download the latest OpenCore release
-2. Extract the IA32 folder
-3. Replace `EFI\BOOT\BOOTIA32.EFI` and `EFI\OC\OpenCore.efi` with the new versions
-4. Copy any new kext versions
-5. Re-apply config.plist changes (or use your existing config.plist — it should be compatible)
-6. Run ocvalidate to check for errors
-
-### Q: What's the difference between Recovery and Full Installer?
-
-**A:** 
-- **Recovery** (what we used): Downloads macOS from Apple's servers during installation. ~637 MB download. Simpler setup.
-- **Full Installer**: Contains the complete macOS installer. ~5 GB download. Can install offline.
-- Both work. Recovery is recommended for first-time installs because it's smaller and simpler.
-
-### Q: Why does the installation reboot multiple times?
-
-**A:** macOS installation happens in stages: (1) copy files to disk, (2) configure the system, (3) finalize settings. Each reboot completes a stage. Even real Macs reboot multiple times during installation — this is normal macOS behavior, not a Hackintosh issue.
-
-### Q: Do I need to select "macOS Installer" on each reboot?
-
-**A:** No. The process is automatic. After you boot from USB, OpenCore auto-detects the next stage of installation and selects it. You just need to boot from USB each time (press F12, select USB). Don't touch the OpenCore picker — let it auto-select.
-
-### Q: What does verbose mode look like?
-
-**A:** White text scrolling on a black screen. Lines like `ACPI: Mac...`, `kext done`, `EB:...` will fly by. This is normal — it's macOS loading. If it stops for more than 2 minutes, see Troubleshooting.
-
-### Q: Why can't I just format the USB with Windows File Explorer?
-
-**A:** Windows File Explorer formats as NTFS or exFAT by default. macOS EFI requires FAT32, and the Dell 3521 requires GPT (not MBR). Rufus or diskpart are the only reliable ways to get GPT + FAT32.
-
-### Q: What if my disk doesn't appear in Disk Utility?
-
-**A:** This usually means AHCI mode isn't enabled in BIOS. Go back to BIOS settings and verify SATA Operation = AHCI. If it's set to RAID, macOS cannot see the disk. You may need to reinstall Windows after changing this.
-
-### Q: What if I get "ocb: loadimage failed" error?
-
-**A:** This means OpenCore can't find the boot files. Common causes:
-- `Misc.Entries` has hardcoded paths — clear it (set to empty array `()`)
-- `BOOTIA32.EFI` is missing from `EFI/BOOT/`
-- USB is MBR instead of GPT
-- Re-run ocvalidate to check for config errors
-
-### Q: How do I know if my config.plist is correct?
-
-**A:** Run `ocvalidate` — it checks for structural errors. If it says "No issues found", the structure is correct. If macOS still doesn't boot, the issue is likely a value that's technically valid but wrong for your hardware (like wrong ig-platform-id). Check the Troubleshooting section.
-
-### Q: Can I use this EFI on a different Ivy Bridge laptop?
-
-**A:** Possibly, but you'll need to adjust: SSDTs (different laptops need different ACPI patches), USB port map (UTBMap.kext), audio layout ID (alcid boot-arg), and SMBIOS (may need a different Mac model). The core config fixes (CPU power management, HD 4000 graphics) are the same for all Ivy Bridge laptops.
 
 ---
 
@@ -1265,24 +908,10 @@ USB (F:\)
 
 ---
 
-## Appendix: File Checksums
-
-After copying files to USB, verify critical files exist:
-
-```bash
-# On macOS/Linux, verify:
-ls -la /Volumes/EFI/EFI/BOOT/BOOTIA32.EFI
-ls -la /Volumes/EFI/EFI/OC/config.plist
-ls -la /Volumes/EFI/com.apple.recovery.boot/BaseSystem.dmg
-```
-
----
-
 ## Appendix: Diskpart Commands Reference
 
 ### Quick Format (Recommended)
-
-```bash
+```
 diskpart
 list disk
 select disk <number>
@@ -1295,8 +924,7 @@ exit
 ```
 
 ### Format Without Clean (Preserves Data on Other Partitions)
-
-```bash
+```
 diskpart
 list disk
 select disk <number>
