@@ -635,13 +635,6 @@ Make sure these files exist:
 2. **The laptop should boot from the internal disk** with OpenCore
 3. **If it doesn't boot**, plug the USB back in and try again
 
-### 8.4 Remove XhciPortLimit (After USB Mapping)
-After you've created a proper USB port map:
-1. Open `config.plist` on the internal EFI partition
-2. Navigate to: `Kernel` → `Quirks`
-3. Find `XhciPortLimit` → change to `False`
-4. Save and restart
-
 ---
 
 ## 13. ESP Folder Structure
