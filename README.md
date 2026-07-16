@@ -93,7 +93,7 @@ If you use the wrong EFI binary, you will get a black screen or the laptop will 
 |------|-------|------|
 | `BaseSystem.dmg` | Downloaded by gibMacOS | ~637 MB |
 | `BaseSystem.chunklist` | Downloaded by gibMacOS | ~2.5 KB |
-| `BOOTIA32.EFI` | Renamed from OpenCore's `OpenCore.efi` | ~300 KB |
+| `BOOTIA32.EFI` | Already included in OpenCore IA32 download | ~300 KB |
 | `config.plist` | Edited with ProperTree | ~15 KB |
 
 ---
@@ -227,15 +227,19 @@ com.apple.recovery.boot/
 
 ### 6.1 Extract OpenCore
 
-1. Unzip `OpenCore-1.0.5-RELEASE.zip`
+1. Unzip `OpenCore-1.0.5-RELEASE.zip` (right-click → Extract All, or use 7-Zip)
 2. Go into the `IA32` folder (NOT x64 — this is critical for the Dell 3521)
-3. Copy the `EFI` folder from `IA32/EFI` to your USB root
+3. Inside `IA32`, you'll see an `EFI` folder — copy this entire `EFI` folder to your USB drive's root (the top-level directory of the USB, e.g., `F:\`)
+
+> **What is "USB root"?** It's the top-level directory of your USB drive. If your USB is drive `F:\`, then the USB root is `F:\`. You're copying the `EFI` folder so it sits directly at `F:\EFI\`.
 
 ### 6.2 Copy Kexts
 
 **What is a kext?** A kext (kernel extension) is a driver for macOS. Just like Windows needs drivers for your GPU, WiFi, and audio, macOS needs kexts. Each kext handles one piece of hardware.
 
-**How to download kexts:** For each kext in the table below, go to its GitHub page, click "Releases" on the right side, and download the latest `.zip` file. Extract the zip — inside you'll find a `.kext` folder. Copy that `.kext` folder into `EFI/OC/Kexts/` on your USB.
+**How to download kexts:** For each kext in the table below, go to its GitHub page, click "Releases" on the right side, and download the latest `.zip` file. Extract the zip (right-click → Extract All, or use 7-Zip) — inside you'll find a `.kext` folder. Copy that `.kext` folder into `EFI/OC/Kexts/` on your USB.
+
+> **What does a .kext folder look like?** After extracting, you'll see a folder like `Lilu.kext`. Inside it are `Contents/Info.plist` and `Contents/MacOS/Lilu`. You copy the **entire** `Lilu.kext` folder (not just the files inside it) into `EFI/OC/Kexts/`.
 
 Download the latest versions of these kexts from their GitHub releases and copy them into `EFI/OC/Kexts/`:
 
@@ -271,12 +275,12 @@ Download the latest versions of these kexts from their GitHub releases and copy 
 
 Copy these `.efi` files into `EFI/OC/Drivers/`:
 
-| Driver | Purpose | Required? |
-|--------|---------|-----------|
-| **HfsPlus.efi** | Read HFS+ formatted drives | **YES** |
-| **OpenRuntime.efi** | Runtime services | **YES** |
-| **apfs_aligned.efi** | Read APFS drives | **YES** — critical for Big Sur |
-| **ResetNvramEntry.efi** | NVRAM reset option | Recommended |
+| Driver | Purpose | Required? | Where to Get It |
+|--------|---------|-----------|-----------------|
+| **HfsPlus.efi** | Read HFS+ formatted drives | **YES** | [GitHub](https://github.com/acidanthera/OcBinaryData/blob/master/Drivers/HfsPlus.efi) — download from Acidanthera's OcBinaryData repo |
+| **OpenRuntime.efi** | Runtime services | **YES** | Included in OpenCore download — already in `IA32/EFI/OC/Drivers/` |
+| **apfs_aligned.efi** | Read APFS drives | **YES** — critical for Big Sur | [GitHub](https://github.com/acidanthera/OcBinaryData/blob/master/Drivers/apfs_aligned.efi) — download from Acidanthera's OcBinaryData repo |
+| **ResetNvramEntry.efi** | NVRAM reset option | Recommended | Included in OpenCore download — already in `IA32/EFI/OC/Drivers/` |
 | **OpenCanopy.efi** | GUI picker (optional) | Optional — doesn't render on this hardware |
 
 > **apfs_aligned.efi** is critical. Big Sur installs to APFS by default. Without this driver, OpenCore cannot read the APFS partition after installation. This driver was **NOT included** in the standard OpenCore 1.0.5 package — you need to download it separately from [Acidanthera's GitHub](https://github.com/acidanthera/OcBinaryData/blob/master/Drivers/apfs_aligned.efi) or find it in community builds.
@@ -285,7 +289,7 @@ Copy these `.efi` files into `EFI/OC/Drivers/`:
 
 > **WHY do I need SSDTs?** SSDTs (Secondary System Description Tables) are small ACPI patches that tell macOS about hardware that the Dell 3521's BIOS doesn't expose correctly. Without them, macOS won't know how to manage the battery, backlight, embedded controller, or CPU power states.
 
-> **Where do I get these SSDTs?** These are **pre-compiled .aml files** — you do NOT compile them yourself. Download them from the [Dortania Dell 3521 guide](https://dortania.github.io/OpenCore-Install-Guide/) or use the ones from the reference EFI in this repository. The .aml files are binary — just copy them, don't try to edit them.
+> **Where do I get these SSDTs?** These are **pre-compiled .aml files** — you do NOT compile them yourself. Download them from the [Dortania Dell 3521 guide](https://dortania.github.io/OpenCore-Install-Guide/) or use the ones from the reference EFI in this repository. The .aml files are binary — just copy them, don't try to edit them. To get them from this repository, go to the `EFI/OC/ACPI/` folder and download each `.aml` file.
 
 Copy these `.aml` files into `EFI/OC/ACPI/`:
 
@@ -352,6 +356,12 @@ Find `UEFI → Quirks`:
 
 Find `ACPI → Delete` and add these two entries:
 
+**How to add entries in ProperTree:**
+1. Click on the `Delete` key under `ACPI`
+2. Press `Ctrl+Insert` to add a new array item
+3. Click on the new item and press `Ctrl+Insert` to add a dict inside it
+4. Inside the dict, add the keys and values shown below
+
 ```xml
 <key>ACPI</key>
 <dict>
@@ -398,6 +408,12 @@ Find `ACPI → Delete` and add these two entries:
 > **What is HD 4000?** The Dell 3521 uses an **Intel HD Graphics 4000** GPU (graphics processor) that's built into the CPU. This is the same GPU used in real MacBook Airs from 2012-2013. macOS has built-in support for it, but we need to tell macOS the correct configuration through these device properties.
 
 Find `DeviceProperties → Add`:
+
+**How to add entries in ProperTree:**
+1. Click on the `Add` key under `DeviceProperties`
+2. Press `Ctrl+Insert` to add a new dictionary entry
+3. Type the path (e.g., `PciRoot(0x0)/Pci(0x2,0x0)`) as the key
+4. Inside that dictionary, add the keys and values shown below
 
 **GPU (PciRoot(0x0)/Pci(0x2,0x0)):**
 
@@ -510,7 +526,7 @@ Copy these two items to the **root** of your USB drive:
 F:\                          ← USB root
 ├── EFI\                     ← The entire EFI folder you just built
 │   ├── BOOT\
-│   │   └── BOOTIA32.EFI    ← Renamed from OpenCore.efi (CRITICAL)
+│   │   └── BOOTIA32.EFI    ← Already included in OpenCore IA32 download
 │   └── OC\
 │       ├── ACPI\            ← 9 SSDTs
 │       ├── Drivers\         ← HfsPlus.efi, OpenRuntime.efi, apfs_aligned.efi, etc.
@@ -586,7 +602,7 @@ Before booting, confirm these files exist on the USB:
 
 1. **Plug the USB into the Dell 3521**
 2. **Power on** the laptop
-3. **Immediately press F12** repeatedly to enter the one-time boot menu
+3. **Immediately press F12** repeatedly — tap it quickly about 5-10 times (2-3 times per second) starting the moment you press the power button. You need to press it before the Dell logo disappears.
 4. Select your USB drive under **UEFI Boot** (it may show as "UEFI: Kingston DataTraveler" or similar)
 5. The OpenCore picker should appear — it will be a **text/CLI picker** (not GUI, see [Known Issues](#14-known-issues--workarounds))
 
@@ -770,12 +786,13 @@ During installation, we set `XhciPortLimit = True` to bypass macOS's 15 USB port
 
 **How to create a USB port map:**
 
-1. Download [USBToolBox](https://github.com/USBToolBox/USBToolBox) (Windows tool)
-2. Run it, click "Discover Ports"
-3. Plug a USB device into each port one by one — USBToolBox will detect which ports are active
-4. Click "Generate ACPI" to create a custom USB port map kext
-5. Copy the generated `UTBMap.kext` to `EFI/OC/Kexts/` (replace the existing one)
-6. In config.plist, set `XhciPortLimit` to `False`:
+1. Download [USBToolBox](https://github.com/USBToolBox/USBToolBox) (Windows tool) — it's a free utility that detects which USB ports are active on your laptop
+2. Run `USBToolBox.exe` — a window will open showing USB controller information
+3. Click "Discover Ports" — this starts the port detection process
+4. Plug a USB device (like a flash drive) into each USB port one by one — USBToolBox will detect which ports are active and show them in a list
+5. Click "Generate ACPI" to create a custom USB port map kext (a file called `UTBMap.kext`)
+6. Copy the generated `UTBMap.kext` to `EFI/OC/Kexts/` (replace the existing one if present)
+7. In config.plist, set `XhciPortLimit` to `False`:
 
 ```xml
 <key>XhciPortLimit</key>
@@ -803,8 +820,8 @@ Edit boot-args in config.plist at `NVRAM → Add → 7C436110-AB2A-4BBB-A880-FE4
 
 The Qualcomm Atheros AR9485 may need:
 
-- **AirportItlwm.kext** (native WiFi support for Big Sur) — preferred
-- **itlwm.kext** + **HeliPort.app** (alternative method)
+- **AirportItlwm.kext** (native WiFi support for Big Sur) — preferred — download from [GitHub](https://github.com/itlwm/AirportItlwm/releases) — choose the Big Sur version
+- **itlwm.kext** + **HeliPort.app** (alternative method) — download from [GitHub](https://github.com/itlwm/itlwm/releases)
 
 Note: AR9485 support varies by macOS version. Big Sur should work with the right kext.
 
@@ -946,7 +963,8 @@ USB (F:\)
 │       ├── Drivers/
 │       │   ├── HfsPlus.efi
 │       │   ├── OpenRuntime.efi
-│       │   └── ResetNvramEntry.efi
+│       │   ├── ResetNvramEntry.efi
+│       │   └── apfs_aligned.efi
 │       ├── Kexts/
 │       │   ├── AirportBrcmFixup.kext/
 │       │   ├── AppleALC.kext/
