@@ -35,7 +35,7 @@ This document details the **exact process** that successfully installed macOS Bi
 | EFI Firmware | IA32 (32-bit) — **NOT x86_64** |
 | Graphics | Intel HD Graphics 4000 |
 | Audio | Realtek ALC282 |
-| WiFi | Qualcomm Atheros AR9485 |
+| WiFi | Intel WiFi (supported via AirportItlwm.kext) |
 | USB | Kingston DataTraveler 16GB |
 
 ### Critical Hardware Detail
@@ -327,22 +327,22 @@ Kexts are macOS kernel extensions. Check these exist in `EFI\OC\Kexts\`:
 - `VirtualSMC.kext` — emulates Apple's SMC chip (ALWAYS needed)
 - `WhateverGreen.kext` — graphics patches (for HD 4000)
 - `AppleALC.kext` — audio patches (for ALC282)
-- `IntelMausi.kext` — Ethernet (if your laptop has Intel Ethernet)
-- `USBMap.kext` or `USBPorts.kext` — USB port mapping
-- `NVMeFix.kext` — NVMe SSD fixes (if using NVMe)
+- `AirportItlwm.kext` — Intel WiFi (Big Sur version)
+- `RealtekRTL8100.kext` — Ethernet
+- `UTBMap.kext` — USB port mapping
+- `VoodooPS2Controller.kext` — keyboard/trackpad
+- `VoodooRMI.kext` — trackpad (I2C)
+- `BrcmPatchRAM3.kext` + `BrcmFirmwareData.kext` + `BrcmBluetoothInjector.kext` — Bluetooth
+- `BrightnessKeys.kext` — brightness hotkeys
+- `SMCBatteryManager.kext` — battery status
+- `ECEnabler.kext` — embedded controller battery fix
 
-### 4.4 Download WiFi Kext (If Needed)
-The Dell 3521's AR9485 WiFi needs a specific kext:
+### 4.4 WiFi & Bluetooth (Already Included)
+The Dell 3521 has **Intel WiFi** — this is already handled by `AirportItlwm.kext` in the EFI folder. No extra download needed.
 
-**Option A: AirportItlwm.kext (native WiFi, recommended):**
-- Download from: https://github.com/OpenIntelWireless/itlwm/releases
-- Get the Big Sur version
-- Extract and copy `AirportItlwm.kext` to `EFI\OC\Kexts\`
+Bluetooth uses `BrcmPatchRAM3.kext` + `BrcmFirmwareData.kext` + `BrcmBluetoothInjector.kext` (also already included).
 
-**Option B: itlwm.kext + HeliPort app:**
-- Download `itlwm.kext` from the same link above
-- Install `HeliPort.app` on macOS (it's a WiFi menu bar app)
-- Copy `itlwm.kext` to `EFI\OC\Kexts\`
+> **Note:** The `AirportBrcmFixup.kext` in the Kexts folder is disabled — it's for Broadcom WiFi only and is not needed.
 
 ---
 
@@ -602,12 +602,33 @@ After macOS is installed and working, you need to copy the EFI to the internal d
 5. **The EFI partition mounts** as `/Volumes/EFI`
 
 ### 8.2 Copy EFI to Internal Disk
+
+**Method A: From GitHub (recommended if USB is not visible in macOS)**
+1. **Open Terminal**
+2. **Run these commands:**
+   ```bash
+   cd ~/Desktop
+   git clone https://github.com/theyonecodes/Dell-3521-Hackintosh.git
+   sudo diskutil mount disk0s1
+   sudo cp -R ~/Desktop/Dell-3521-Hackintosh/EFI /Volumes/EFI/
+   ```
+3. **Verify the copy:**
+   ```bash
+   ls /Volumes/EFI/EFI/OC/Kexts/
+   ```
+   You should see all kexts listed.
+
+**Method B: From USB (if USB is visible in Finder)**
 1. **Open Finder** → navigate to the USB drive
 2. **Copy the entire `EFI` folder** from USB to `/Volumes/EFI/`
-3. **Make sure `BOOTIA32.EFI` is in the right place:**
-   ```
-   /Volumes/EFI/EFI/BOOT/BOOTIA32.EFI
-   ```
+
+### 8.3 Verify EFI Structure
+Make sure these files exist:
+```
+/Volumes/EFI/EFI/BOOT/BOOTIA32.EFI
+/Volumes/EFI/EFI/OC/config.plist
+/Volumes/EFI/EFI/OC/Kexts/AirportItlwm.kext
+```
 
 ### 8.3 Remove USB and Test
 1. **Restart the laptop** → remove the USB
@@ -645,12 +666,22 @@ F:\
 │       │   ├── ResetNvramEntry.efi ← NVRAM reset
 │       │   └── apfs_aligned.efi  ← APFS partition support
 │       ├── Kexts\
-│       │   ├── AppleALC.kext     ← Audio (ALC282)
-│       │   ├── IntelMausi.kext   ← Ethernet
-│       │   ├── Lilu.kext         ← Core patching engine
-│       │   ├── USBMap.kext       ← USB port map
-│       │   ├── VirtualSMC.kext   ← SMC emulation
-│       │   └── WhateverGreen.kext ← Graphics (HD 4000)
+│       │   ├── AirportItlwm.kext   ← Intel WiFi (Big Sur)
+│       │   ├── AirportBrcmFixup.kext ← Broadcom WiFi (disabled)
+│       │   ├── AppleALC.kext       ← Audio (ALC282)
+│       │   ├── BrcmFirmwareData.kext ← Bluetooth firmware
+│       │   ├── BrcmPatchRAM3.kext  ← Bluetooth patching
+│       │   ├── BrcmBluetoothInjector.kext ← Bluetooth injection
+│       │   ├── BrightnessKeys.kext ← Brightness hotkeys
+│       │   ├── ECEnabler.kext      ← Battery EC patch
+│       │   ├── Lilu.kext           ← Core patching engine
+│       │   ├── RealtekRTL8100.kext ← Ethernet
+│       │   ├── SMCBatteryManager.kext ← Battery status
+│       │   ├── UTBMap.kext         ← USB port map
+│       │   ├── VirtualSMC.kext     ← SMC emulation
+│       │   ├── VoodooPS2Controller.kext ← Keyboard/trackpad
+│       │   ├── VoodooRMI.kext      ← Trackpad (I2C)
+│       │   └── WhateverGreen.kext  ← Graphics (HD 4000)
 │       ├── Resources\
 │       │   ├── Audio\
 │       │   ├── Font\
@@ -759,9 +790,10 @@ F:\
 **Symptoms:** WiFi icon shows "No Hardware Installed" or similar.
 
 **Fixes:**
-- Use `AirportItlwm.kext` (native) or `itlwm.kext` + HeliPort app
-- Make sure the kext version matches your macOS version
-- AR9485 may need `itlwm` instead of `AirportItlwm` depending on the version
+- Ensure `AirportItlwm.kext` is in `EFI/OC/Kexts/` and enabled in config.plist
+- The kext must match your macOS version (Big Sur version is included)
+- If WiFi still doesn't work, try `itlwm.kext` + HeliPort app instead
+- Check that `AirportBrcmFixup.kext` is **disabled** (it's for Broadcom, not Intel)
 
 ### No Audio
 **Symptoms:** No sound from speakers or headphone jack.
