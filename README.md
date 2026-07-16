@@ -884,6 +884,9 @@ F:\
 5. Re-apply config.plist changes (or use your existing config.plist — it should be compatible)
 6. Run ocvalidate to check for errors
 
+### Q: Can I update macOS to a newer version (Sonoma, Ventura, Tahoe)?
+**A: NO.** macOS Monterey (12) and later dropped support for Intel HD 4000 graphics. Updating will break display/graphics or prevent boot entirely. Stay on **Big Sur (11)** — it's the last macOS version that works on the Dell 3521. If macOS shows an update notification, **ignore it**. You can disable automatic updates in System Preferences → Software Update → uncheck "Automatically keep my Mac up to date".
+
 ### Q: What's the difference between Recovery and Full Installer?
 **A:**
 - **Recovery** (what we used): Downloads macOS from Apple's servers during installation. ~637 MB download. Simpler setup.
