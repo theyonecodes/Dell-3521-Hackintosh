@@ -315,9 +315,9 @@
 			<key>BundlePath</key>
 			<string>AirPortAtheros40.kext</string>
 			<key>Comment</key>
-			<string>AR9485 WiFi injector for Big Sur</string>
+			<string>AR9485 WiFi - UNSUPPORTED in Big Sur, disabled</string>
 			<key>Enabled</key>
-			<true/>
+			<false/>
 			<key>ExecutablePath</key>
 			<string>Contents/MacOS/AirPortAtheros40</string>
 			<key>MaxKernel</key>
@@ -333,36 +333,36 @@
 			<key>BundlePath</key>
 			<string>AirportItlwm.kext</string>
 			<key>Comment</key>
-			<string>Disabled - Intel WiFi, useless with Atheros AR9485</string>
+			<string>Intel WiFi - ENABLE this after swapping to Intel card (e.g. 6235/7260)</string>
+			<key>Enabled</key>
+			<true/>
+			<key>ExecutablePath</key>
+			<string>Contents/MacOS/AirportItlwm</string>
+			<key>MaxKernel</key>
+			<string></string>
+			<key>MinKernel</key>
+			<string></string>
+			<key>PlistPath</key>
+			<string>Contents/Info.plist</string>
+		</dict>
+		<dict>
+			<key>Arch</key>
+			<string>Any</string>
+			<key>BundlePath</key>
+			<string>AirportBrcmFixup.kext</string>
+			<key>Comment</key>
+			<string>Disabled - Dell 3521 has Atheros WiFi, not Broadcom</string>
 			<key>Enabled</key>
 			<false/>
 			<key>ExecutablePath</key>
-			<string>Contents/MacOS/AirportItlwm</string>
-				<key>MaxKernel</key>
-				<string></string>
-				<key>MinKernel</key>
-				<string></string>
-				<key>PlistPath</key>
-				<string>Contents/Info.plist</string>
-			</dict>
-			<dict>
-				<key>Arch</key>
-				<string>Any</string>
-				<key>BundlePath</key>
-				<string>AirportBrcmFixup.kext</string>
-			<key>Comment</key>
-			<string>Disabled - Dell 3521 has Atheros WiFi, not Broadcom</string>
-				<key>Enabled</key>
-				<false/>
-				<key>ExecutablePath</key>
-				<string>Contents/MacOS/AirportBrcmFixup</string>
-				<key>MaxKernel</key>
-				<string></string>
-				<key>MinKernel</key>
-				<string></string>
-				<key>PlistPath</key>
-				<string>Contents/Info.plist</string>
-			</dict>
+			<string>Contents/MacOS/AirportBrcmFixup</string>
+			<key>MaxKernel</key>
+			<string></string>
+			<key>MinKernel</key>
+			<string></string>
+			<key>PlistPath</key>
+			<string>Contents/Info.plist</string>
+		</dict>
 			<dict>
 				<key>Arch</key>
 				<string>Any</string>
