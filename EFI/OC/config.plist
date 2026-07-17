@@ -333,9 +333,9 @@
 			<key>BundlePath</key>
 			<string>AirportItlwm.kext</string>
 			<key>Comment</key>
-			<string>Intel WiFi - ENABLE this after swapping to Intel card (e.g. 6235/7260)</string>
+			<string>Intel WiFi - DISABLED (using Atheros AR9485)</string>
 			<key>Enabled</key>
-			<true/>
+			<false/>
 			<key>ExecutablePath</key>
 			<string>Contents/MacOS/AirportItlwm</string>
 			<key>MaxKernel</key>
