@@ -333,9 +333,9 @@
 			<key>BundlePath</key>
 			<string>AirportItlwm.kext</string>
 			<key>Comment</key>
-			<string>Intel WiFi - DISABLED (using Atheros AR9485)</string>
+			<string>Intel WiFi - keep disabled when using Atheros AR9485</string>
 			<key>Enabled</key>
-			<false/>
+			<true/>
 			<key>ExecutablePath</key>
 			<string>Contents/MacOS/AirportItlwm</string>
 			<key>MaxKernel</key>
