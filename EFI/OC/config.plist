@@ -1086,7 +1086,7 @@
 				<key>boot-args</key>
 				<string>alcid=29 igfxonln=1 -igfxnohdmi</string>
 				<key>csr-active-config</key>
-				<data>NwcAAA==</data>
+				<data>AAAAAA==</data>
 				<key>prev-lang:kbd</key>
 				<data></data>
 				<key>run-efi-updater</key>
