@@ -408,13 +408,13 @@ Press **⌘ + Shift + .** (Command + Shift + Period)
 
 ### Audio Not Working
 - Verify `AppleALC.kext` is injected
-- Try different `alcid` values in config.plist (current: `11` for ALC282)
+- Audio layout is set via DeviceProperties (`layout-id = 3`, ALC3221/ALC282). To change, edit that integer and reset NVRAM. Do NOT use `alcid` boot-arg.
 - Reset NVRAM after changing audio layout ID
 
 ### USB Ports Not Working
 - `USBInjectAll.kext` provides basic USB support for installation
 - For full USB mapping, use **USBToolBox** post-install
-- `XhciPortLimit` quirk is enabled for basic port support (removable after USB mapping)
+- Full USB mapping with USBToolBox recommended post-install — configure one custom USB port map, then remove `USBInjectAll.kext`
 
 ### After macOS Update
 If boot breaks after a macOS update:
