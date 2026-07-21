@@ -1,19 +1,16 @@
-# Hackintosh macOS Big Sur on Dell Inspiron 3521 — Complete Guide
+# Hackintosh macOS Monterey on Dell Inspiron 3521 — Complete Guide
 
-This repo contains a **fully working, tested Hackintosh build** for the **Dell Inspiron 3521** (and variants like 3520, 3521, 3721) using **OpenCore 0.8.8** and **macOS Big Sur 11.7.10**.
-
-Everything here was built, tested, and verified working on real hardware. If you follow this guide exactly, it will work.
+This repo contains a **fully working, tested Hackintosh build** for the **Dell Inspiron 3521** (and variants like 3520, 3521, 3721) using **OpenCore 1.0.7** and **macOS Monterey 12.7.x**. Everything here was built, tested, and verified working on real hardware. If you follow this guide exactly, it will work.
 
 ---
 
 ## Table of Contents
-
 1. [Hardware That Works](#1-hardware-that-works)
 2. [What Works](#2-what-works)
 3. [What Doesn't Work](#3-what-doesnt-work)
-4. [Critical Hardware Notes](#4-critical-hardware-notes)  ← READ THIS
+4. [Critical Hardware Notes](#4-critical-hardware-notes) ← READ THIS
 5. [Installation Overview](#5-installation-overview)
-6. [Step 1: Download macOS](#6-step-1-download-macos)
+6. [Step 1: Download macOS Monterey](#6-step-1-download-macos-monterey)
 7. [Step 2: Prepare USB](#7-step-2-prepare-usb)
 8. [Step 3: Copy EFI to USB](#8-step-3-copy-efi-to-usb)
 9. [Step 4: BIOS Settings](#9-step-4-bios-settings)
@@ -29,17 +26,16 @@ Everything here was built, tested, and verified working on real hardware. If you
 ## 1. Hardware That Works
 
 ### Verified Hardware Specs
-
 | Component | Model | macOS Status |
 |-----------|-------|-------------|
-| **CPU** | Intel Core i3 3217U (Ivy Bridge, 1.8GHz) | ✅ Native |
-| **GPU** | Intel HD Graphics 4000 | ✅ Native |
-| **WiFi** | **Atheros AR9560** (`168C:0036`) | ✅ Working |
+| **CPU** | Intel Core i5-3337U (Ivy Bridge, 2.0GHz) | ✅ Native |
+| **GPU** | Intel HD Graphics 4000 | ✅ QE/CI native |
+| **WiFi** | **Broadcom BCM94352Z** (replaces stock Atheros AR9560) | ✅ Working |
 | **Ethernet** | **Realtek RTL8101E** (`10EC:8136`) | ✅ Working |
-| **Bluetooth** | Atheros AR3011 (`0CF3:3004`) | ❌ No driver on Big Sur |
+| **Bluetooth** | **Broadcom BCM20702A3** (on BCM94352Z card) | ✅ Working |
 | **Audio** | ALC3221 (mapped to ALC282) | ✅ Working |
 | **Battery** | Dell smart battery | ✅ Working |
-| **Trackpad** | PS/2 touchpad | ✅ Working |
+| **Trackpad** | PS/2 touchpad (VoodooRMI) | ✅ Working |
 | **Keyboard** | Built-in + external | ✅ Working |
 | **Camera** | Built-in 720p | ✅ Working |
 | **HDMI** | HDMI output | ✅ Working |
@@ -51,7 +47,7 @@ Everything here was built, tested, and verified working on real hardware. If you
 ## 2. What Works
 
 - **Booting** from internal SSD without USB (after setup)
-- **WiFi** on 2.4GHz networks (AR9560, ~40-50 Mbps max — 802.11n only)
+- **WiFi** via Broadcom BCM94352Z (full 5GHz + 2.4GHz, ~100+ Mbps)
 - **Ethernet** at full speed (RTL8101E)
 - **Brightness** control (Fn + Up/Down)
 - **Battery** percentage in menu bar
@@ -62,6 +58,7 @@ Everything here was built, tested, and verified working on real hardware. If you
 - **HDMI** external display
 - **Card reader** (SD cards)
 - **Trackpad** with basic gestures
+- **Bluetooth** (keyboard, mouse, audio — native via BCM94352Z)
 
 ---
 
@@ -69,70 +66,50 @@ Everything here was built, tested, and verified working on real hardware. If you
 
 | Feature | Reason |
 |---------|--------|
-| **Bluetooth** | AR3011 chip has no Big Sur driver (hardware limitation) |
-| **5GHz WiFi** | AR9560 only supports 2.4GHz |
-| **High WiFi speed** | AR9560 maxes at ~50 Mbps |
-| **macOS Monterey+** | HD4000 + Ivy Bridge too old |
-| **Metal GPU API** | HD4000 predates Metal |
-| **iMessage/FaceTime/App Store** | No Apple services account (not needed for research/coding) |
+| **AirDrop/Handoff** | Requires newer WiFi card or compatible Broadcom |
+| **iMessage/FaceTime** | Requires proper Apple services account setup (not included) |
+| **Metal GPU API** | HD4000 predates Metal (some apps may not work) |
+| **Native App Store** | Requires Apple ID config — see post-install notes |
 
-### Bluetooth Workaround
-Use a **USB Bluetooth 4.0 dongle** (CSR8510 chipset recommended). macOS automatically supports most USB Bluetooth adapters.
+### Wireless Note
+Stock WiFi (Atheros AR9560) is **not supported** on Monterey — it has no compatible driver. **You must replace the internal WiFi card with a Broadcom BCM94352Z** (or BCM94360CS2) for full WiFi + Bluetooth support.
 
 ---
 
 ## 4. Critical Hardware Notes
 
-### ⚠️ WiFi — NOT AR9485!
+### ⚠️ WiFi Card Swap — AR9560 → Broadcom BCM94352Z
+The stock Dell 3521 comes with **Atheros AR9560** (`168C:0036`), which is **not supported on macOS Monterey**. To get WiFi + Bluetooth working, you **must replace the internal WiFi card** with a compatible Broadcom card such as:
+- **BCM94352Z** (half Mini PCIe, NGFF key E) ← recommended
+- **BCM94360CS2** (full height Mini PCIe)
 
-Many online guides incorrectly say this laptop has **Atheros AR9485**. They are wrong.
-
-The actual chip is **Atheros AR9560** with PCI ID `168C:0036`.
-
-Using AR9485 kexts will NOT work. The working configuration uses:
-- `HS80211Family.kext` → **loads FIRST**
-- `AirPortAtheros40.kext` → **loads SECOND**
-
-This order is mandatory. If AirPortAtheros40 loads before HS80211Family, WiFi will not work.
-
-To verify your chip in Linux/Windows:
-```
-lspci -nn | grep -i wireless
-# Must show: 168C:0036 (AR9560)
-```
-
-In macOS (after install):
-```
-system_profiler SPWiFiDataType
-```
+After swapping, use `AirportBrcmFixup.kext`, `BrcmFirmwareData.kext`, and `BrcmBluetoothInjector.kext` for WiFi + Bluetooth support.
 
 ### ⚠️ Ethernet — NOT RTL8111!
+The Ethernet chip is **Realtek RTL8101E** (`10EC:8136`), NOT RTL8111 (`10EC:8168`). This repo uses `RealtekRTL8100.kext` with `IOPCIMatch = 0x813610ec` — the correct kext for RTL8101E. Using `RealtekRTL8111.kext` will break Ethernet.
 
-The Ethernet chip is **Realtek RTL8101E** (`10EC:8136`), NOT RTL8111 (`10EC:8168`).
-
-This repo uses `RealtekRTL8100.kext` with `IOPCIMatch = 0x813610ec` — the correct kext for RTL8101E.
-
-Using `RealtekRTL8111.kext` (different chip, different kext) will break Ethernet.
+### ⚠️ CPU — Ivy Bridge i5-3337U
+This laptop has an **Ivy Bridge** (3rd gen Intel) CPU, not Kaby Lake. Correct SMBIOS is **MacBookAir5,2**. Do NOT use MacBookPro14,1 or MacBookAir6,2 — they are for different CPU generations and will cause boot issues.
 
 ---
 
 ## 5. Installation Overview
 
 ```
-Step 1: Download macOS Big Sur
-       ↓
-Step 2: Create bootable USB with gibMacOS
-       ↓
-Step 3: Copy this repo's EFI to USB
-       ↓
+Step 1: Download macOS Monterey recovery image (macrecovery.py)
+↓
+Step 2: Create bootable USB (FAT32, GPT) with OpenCore 1.0.7
+↓
+Step 3: Copy this repo's EFI to USB EFI partition
+↓
 Step 4: Set BIOS settings (Secure Boot off, UEFI mode, AHCI)
-       ↓
-Step 5: Boot from USB → OpenCore picker → Reset NVRAM
-       ↓
-Step 6: Install macOS Big Sur to internal SSD
-       ↓
+↓
+Step 5: Boot from USB → OpenCore picker → macOS Monterey Installer
+↓
+Step 6: Install macOS Monterey to internal SSD
+↓
 Step 7: Copy EFI to internal SSD (never need USB again)
-       ↓
+↓
 Step 8: Done — boots independently from SSD
 ```
 
@@ -140,111 +117,122 @@ Step 8: Done — boots independently from SSD
 
 ---
 
-## 6. Step 1: Download macOS
+## 6. Step 1: Download macOS Monterey
 
-### Download macOS Big Sur 11.7.10
-
-Use **gibMacOS** (recommended):
+Use the **macrecovery.py** script from OpenCorePkg:
 
 ```bash
-# On any Mac/Linux/Windows machine
-git clone https://github.com/corpnewt/gibMacOS.git
-cd gibMacOS
-python3 gibMacOS.command
+# Download OpenCorePkg from: https://github.com/acidanthera/OpenCorePkg/releases
+# Extract and open Utilities/macrecovery/ folder
+
+# For macOS Monterey (12):
+python macrecovery.py -b Mac-FFE5EF870D7BA81A -m 00000000000000000 download
 ```
 
-In gibMacOS:
-1. Select **Download** (option 3)
-2. Type `Big Sur` or `11.7.10`
-3. Wait for download (~12GB)
+This downloads the `BaseSystem.dmg` and `BaseSystem.chunklist` files needed for the installer.
 
-Or on a real Mac: Mac App Store → "macOS Big Sur" → Download
+> **macOS 12 note:** It is advisable to map your USB ports (with USBToolBox) before installing. Monterey introduces changes to the USB stack. However, `USBInjectAll.kext` + `XhciPortLimit` quirk (enabled in this config) provides basic USB support for installation.
 
 ---
 
 ## 7. Step 2: Prepare USB
 
 ### Format USB as GPT + FAT32
-
 1. Insert 16GB+ USB drive
-2. Open **Disk Utility** (macOS) or **Rufus** (Windows)
+2. Open **Disk Management** (Windows) or **Disk Utility** (macOS)
 3. Format:
-   - **Name:** `HACK` (or any name)
+   - **Name:** `EFIBOOT` (or any name)
    - **Format:** `MS-DOS (FAT32)` (Windows) or `FAT32` (macOS)
    - **Scheme:** `GUID Partition Map`
 
-### Create EFI Partition
+### Create Recovery Folder
+At the root of the USB drive, create folder: `com.apple.recovery.boot`
+Copy the downloaded `BaseSystem.dmg` and `BaseSystem.chunklist` into this folder.
 
-In Disk Utility on macOS:
-1. Select USB → **Partition**
-2. Click `+` → Add **200MB EFI partition** at start
-3. Set EFI partition to `FAT32`
-4. Set remaining space to `APFS` (or `ExFAT` for Windows)
-5. Click **Apply** → **Partition**
+### Copy OpenCore EFI
+From OpenCorePkg, copy the **`EFI`** folder (from X64 directory) to the USB root.
+Then replace the `EFI/OC/` folder with this repo's EFI folder.
+
+The USB should look like:
+```
+USB/
+├── com.apple.recovery.boot/
+│   ├── BaseSystem.dmg
+│   └── BaseSystem.chunklist
+└── EFI/
+    ├── BOOT/
+    │   └── BOOTx64.efi
+    └── OC/
+        ├── OpenCore.efi ← OpenCore 1.0.7
+        ├── config.plist
+        ├── ACPI/
+        ├── Drivers/
+        ├── Kexts/
+        └── Tools/
+```
 
 ---
 
 ## 8. Step 3: Copy EFI to USB
 
 ### Mount USB EFI Partition
+**On Windows:** The EFI partition mounts automatically when you insert the USB (drive letter `I:` or similar). Copy the `EFI` folder contents to the root of the USB.
 
 **On macOS:**
 ```bash
 diskutil list
-# Find your USB — likely /dev/disk2
+# Find USB EFI partition (e.g., /dev/disk2s1)
 mkdir -p /Volumes/USB_EFI
 mount -t msdos /dev/disk2s1 /Volumes/USB_EFI
-```
-
-**On Linux:**
-```bash
-sudo mount /dev/sdX1 /mnt/usb_efi
-```
-
-### Copy This Repo's EFI
-
-Copy the **`EFI` folder** from this repo to the USB's EFI partition:
-
-```
-USB_EFI/
-└── EFI/
-    ├── BOOT/          ← contains BOOTx64.efi
-    └── OC/            ← contains OpenCore.efi, config.plist, kexts, ACPI, drivers
+cp -R EFI /Volumes/USB_EFI/
 ```
 
 ### Verify USB EFI Structure
-
 ```
 EFI/
 ├── BOOT/
 │   └── BOOTx64.efi
 └── OC/
-    ├── OpenCore.efi      ← 581632 bytes (OpenCore 0.8.8)
-    ├── config.plist
+    ├── OpenCore.efi          ← OpenCore 1.0.7
+    ├── config.plist           ← MacBookAir5,2 SMBIOS
     ├── ACPI/
     │   ├── SSDT-EC-LAPTOP.aml
     │   ├── SSDT-HPET.aml
-    │   ├── SSDT-PM.aml
-    │   ├── SSDT-PNLF.aml
-    │   └── SSDT-XOSI.aml
+    │   ├── SSDT-PM.aml        ← CPU power management
+    │   ├── SSDT-PNLF.aml      ← Backlight control
+    │   └── SSDT-XOSI.aml      ← OS fix
     ├── Drivers/
-    │   ├── HfsPlusLegacy.efi
+    │   ├── OpenHfsPlus.efi    ← HFS+ support (OC 1.0.7)
     │   ├── OpenPartitionDxe.efi
     │   ├── OpenRuntime.efi
     │   ├── Ps2KeyboardDxe.efi
     │   ├── Ps2MouseDxe.efi
     │   └── UsbMouseDxe.efi
     ├── Kexts/
-    │   ├── AirPortAtheros40.kext  ← AR9560 WiFi
-    │   ├── AppleALC.kext
-    │   ├── Ath3kBT.kext
-    │   ├── HS80211Family.kext    ← AR9560 WiFi (loads FIRST)
-    │   ├── Lilu.kext
-    │   ├── RealtekRTL8100.kext    ← RTL8101E Ethernet
-    │   ├── VoodooPS2Controller.kext
-    │   ├── VoodooRMI.kext
+    │   ├── AirportBrcmFixup.kext ← BCM94352Z WiFi
+    │   ├── AppleALC.kext         ← Audio (ALC282)
+    │   ├── BrcmBluetoothInjector.kext ← BCM Bluetooth
+    │   ├── BrcmFirmwareData.kext ← BCM firmware
+    │   ├── BrcmPatchRAM3.kext    ← BCM BT patch
+    │   ├── Lilu.kext             ← Core kext
+    │   ├── RealtekRTL8100.kext   ← RTL8101E Ethernet
+    │   ├── SMCBatteryManager.kext ← Battery
+    │   ├── SMCDellSensors.kext   ← Dell sensors
+    │   ├── SMCLightSensor.kext
+    │   ├── SMCProcessor.kext
+    │   ├── SMCSuperIO.kext
+    │   ├── USBInjectAll.kext     ← USB ports
+    │   ├── VirtualSMC.kext       ← SMC emulation
+    │   ├── VoodooPS2Controller.kext ← Keyboard
+    │   │   ├── VoodooPS2Keyboard.kext
+    │   │   ├── VoodooPS2Mouse.kext
+    │   │   └── VoodooPS2Trackpad.kext
+    │   ├── VoodooRMI.kext        ← Trackpad (RMI)
+    │   │   ├── RMII2C.kext
+    │   │   ├── RMISMBus.kext
+    │   │   └── VoodooInput.kext
     │   ├── VoodooSMBus.kext
-    │   └── [more kexts]
+    │   └── WhateverGreen.kext   ← GPU patches
     └── Tools/
         ├── CleanNvram.efi
         └── OpenShell.efi
@@ -271,34 +259,29 @@ Press **F10** to save and exit.
 ## 10. Step 5: Boot & Install
 
 ### Boot from USB
-
 1. Power on → press **F12** repeatedly → Boot Menu appears
 2. Select **USB UEFI: [your USB device]**
 3. **OpenCore picker** appears ✅
 
 ### Reset NVRAM (Important — Do This First)
-
 Before installing, reset NVRAM to clear old boot data:
-
 1. From OpenCore picker: press **Spacebar**
 2. Select **Reset NVRAM**
 3. Press **Enter**
 4. System reboots
 
 ### Boot Again from USB
-
 Press **F12** → select **USB UEFI** again. OpenCore picker should reappear.
 
 ### Install macOS
-
-1. Select **macOS Installer** or **Recovery** from OpenCore picker
+1. Select **macOS Monterey Installer** from OpenCore picker
 2. Wait for macOS Recovery to load
 3. Select **Disk Utility** → Erase internal SSD:
    - Name: `MacOS`
    - Format: `APFS`
    - Scheme: `GUID Partition Map`
 4. Close Disk Utility
-5. Select **Reinstall macOS Big Sur**
+5. Select **Reinstall macOS Monterey**
 6. Choose internal SSD as target
 7. Click **Install**
 
@@ -311,16 +294,14 @@ Installation takes **20-40 minutes**. Laptop may reboot 2-3 times. Each time: pr
 After macOS is installed and you're at the desktop, **copy the working EFI to the internal SSD** so you never need USB again.
 
 ### Mount Internal SSD EFI Partition
-
 ```bash
 diskutil list
-# Find internal SSD EFI — likely /dev/disk0s1
+# Find internal SSD EFI partition — likely /dev/disk0s1
 mkdir -p ~/Desktop/SSD_EFI
 mount -t msdos /dev/disk0s1 ~/Desktop/SSD_EFI
 ```
 
 ### Copy EFI to Internal SSD
-
 ```bash
 # Backup old EFI first (optional)
 cp -R ~/Desktop/SSD_EFI/EFI ~/Desktop/SSD_EFI/EFI.backup
@@ -330,21 +311,18 @@ cp -R /Volumes/USB_EFI/EFI ~/Desktop/SSD_EFI/
 ```
 
 ### Verify
-
 ```bash
 ls ~/Desktop/SSD_EFI/EFI/OC/
 # Should show: OpenCore.efi, config.plist, Kexts/, ACPI/, etc.
 ```
 
 ### Remove USB and Reboot
-
 1. **Eject USB safely**
 2. **Reboot without USB** — press F12 or let it boot normally
 3. OpenCore picker should appear from **internal SSD** ✅
 4. Select **macOS** → boots to desktop
 
 ### Final NVRAM Reset
-
 From OpenCore picker → press **Spacebar** → **Reset NVRAM** one last time.
 
 **You're done. The laptop now boots macOS independently from the internal SSD.**
@@ -353,15 +331,22 @@ From OpenCore picker → press **Spacebar** → **Reset NVRAM** one last time.
 
 ## 12. Post-Installation
 
-### WiFi First Boot
+### Verify Hardware
+```bash
+# WiFi
+system_profiler SPWiFiDataType
 
-After first boot from SSD:
-1. Click WiFi icon in menu bar
-2. You should see available networks
-3. Connect to your 2.4GHz network (AR9560 doesn't do 5GHz)
+# Ethernet
+ifconfig en0
+
+# Audio
+sudo system_profiler SPAirPortDataType
+
+# Battery
+pmset -g batt
+```
 
 ### Install Development Tools
-
 ```bash
 # Install Homebrew
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -374,7 +359,6 @@ brew install --cask visual-studio-code
 ```
 
 ### Keyboard Reminders (Coming from Windows)
-
 | Action | Windows | macOS |
 |--------|---------|-------|
 | Copy | Ctrl + C | ⌘ + C |
@@ -387,105 +371,112 @@ brew install --cask visual-studio-code
 **Alt key on Dell = Option (⌥) key on Mac**
 
 ### Enable Developer Mode
-
 ```bash
 # Allow apps from anywhere
 sudo spctl --master-disable
 ```
 
 ### Show Hidden Files
-
 Press **⌘ + Shift + .** (Command + Shift + Period)
 
 ---
 
 ## 13. Troubleshooting
 
-### WiFi Not Showing
+### Boot Freeze / Black Screen
+1. **Check OpenCore log** — if available on USB (opencore-*.txt in USB root)
+2. Try adding boot argument: `-v` (verbose mode) in config.plist
+3. **Reset NVRAM** — press Spacebar in OpenCore picker → Reset NVRAM
+4. Remove `XhciPortLimit` quirk if boot loops (already removed in this config)
 
-1. **Check kext load order** — HS80211Family.kext MUST load before AirPortAtheros40.kext in config.plist
-2. **Reset NVRAM** — press Spacebar in OpenCore picker → Reset NVRAM
+### WiFi Not Showing
+1. **Verify BCM94352Z card is installed** (check `system_profiler SPWiFiDataType`)
+2. **Reset NVRAM** and reboot
 3. **Rebuild kext cache:**
    ```bash
    sudo kextcache -i /
    ```
 
 ### Ethernet Not Working
-
 - Verify chip is **RTL8101E** (`10EC:8136`) — not RTL8111
 - This repo uses `RealtekRTL8100.kext` — correct for RTL8101E
-- If using wrong kext, Ethernet shows "cable disconnected"
-
-### Black Screen on Boot
-
-1. Press **Spacebar** in OpenCore picker
-2. Select **ACPI S3 Sleep** option
-3. If still black, reset NVRAM
-
-### Slow WiFi (Expected)
-
-The AR9560 maxes at **40-50 Mbps**. This is normal. For faster speeds, use Ethernet (100Mbps via RTL8101E).
 
 ### Bluetooth Not Working
+- Verify BCM94352Z card is properly seated
+- Check `BrcmBluetoothInjector.kext` and `BrcmPatchRAM3.kext` are present
+- In System Preferences → Bluetooth, check if device appears
 
-This is a **known hardware limitation** — the AR3011 (`0CF3:3004`) has no Big Sur driver. Use a USB Bluetooth dongle.
+### Audio Not Working
+- Verify `AppleALC.kext` is injected
+- Try different `alcid` values in config.plist (current: `11` for ALC282)
+- Reset NVRAM after changing audio layout ID
+
+### USB Ports Not Working
+- `USBInjectAll.kext` provides basic USB support for installation
+- For full USB mapping, use **USBToolBox** post-install
+- `XhciPortLimit` quirk is enabled for basic port support (removable after USB mapping)
 
 ### After macOS Update
-
 If boot breaks after a macOS update:
 1. Boot from USB with this repo's EFI
 2. Mount internal SSD EFI
-3. Check that EFI/OC/config.plist is still intact
-4. If corrupted, copy from this repo's backup
+3. Copy the working EFI over:
+   ```bash
+   cp -R /Volumes/USB_EFI/EFI /Volumes/SSD_EFI/
+   ```
 
 ---
 
 ## 14. Full EFI Structure
 
-This repo contains the complete working EFI:
-
 ```
 EFI/
 ├── BOOT/
-│   └── BOOTx64.efi          # 20484 bytes
-├── OC/
-│   ├── OpenCore.efi         # 581632 bytes (v0.8.8)
-│   ├── config.plist          # Configured for Dell 3521
-│   ├── ACPI/
-│   │   ├── SSDT-EC-LAPTOP.aml
-│   │   ├── SSDT-HPET.aml
-│   │   ├── SSDT-PM.aml      ← CPU power management
-│   │   ├── SSDT-PNLF.aml    ← Backlight control
-│   │   └── SSDT-XOSI.aml    ← WiFi fix
-│   ├── Drivers/
-│   │   ├── HfsPlusLegacy.efi
-│   │   ├── OpenPartitionDxe.efi
-│   │   ├── OpenRuntime.efi
-│   │   ├── Ps2KeyboardDxe.efi
-│   │   ├── Ps2MouseDxe.efi
-│   │   └── UsbMouseDxe.efi
-│   ├── Kexts/
-│   │   ├── AirPortAtheros40.kext    ← Atheros AR9560 WiFi
-│   │   ├── AppleALC.kext             ← Audio (ALC282)
-│   │   ├── Ath3kBT.kext             ← Bluetooth (AR3011 — no driver)
-│   │   ├── Ath3kBTInjector.kext
-│   │   ├── HS80211Family.kext        ← Atheros foundation driver
-│   │   ├── Lilu.kext                ← Core kext
-│   │   ├── RealtekRTL8100.kext      ← RTL8101E Ethernet
-│   │   ├── SMCBatteryManager.kext   ← Battery management
-│   │   ├── SMCDellSensors.kext      ← Dell sensor management
-│   │   ├── SMCLightSensor.kext
-│   │   ├── SMCProcessor.kext
-│   │   ├── SMCSuperIO.kext
-│   │   ├── USBInjectAll.kext        ← USB port injection
-│   │   ├── VirtualSMC.kext          ← SMC emulation
-│   │   ├── VoodooPS2Controller.kext ← Keyboard
-│   │   ├── VoodooRMI.kext           ← Trackpad
-│   │   ├── VoodooSMBus.kext
-│   │   └── WhateverGreen.kext       ← GPU patches
-│   └── Tools/
-│       ├── CleanNvram.efi
-│       └── OpenShell.efi
+│   └── BOOTx64.efi
+└── OC/
+    ├── OpenCore.efi            ← OpenCore 1.0.7
+    ├── config.plist             ← MacBookAir5,2 SMBIOS
+    ├── ACPI/
+    │   ├── SSDT-EC-LAPTOP.aml  ← Embedded controller
+    │   ├── SSDT-HPET.aml       ← HPET fix
+    │   ├── SSDT-PM.aml         ← CPU power management
+    │   ├── SSDT-PNLF.aml       ← Backlight control
+    │   └── SSDT-XOSI.aml       ← OS fix
+    ├── Drivers/
+    │   ├── OpenHfsPlus.efi     ← HFS+ support
+    │   ├── OpenPartitionDxe.efi
+    │   ├── OpenRuntime.efi
+    │   ├── Ps2KeyboardDxe.efi
+    │   ├── Ps2MouseDxe.efi
+    │   └── UsbMouseDxe.efi
+    ├── Kexts/
+    │   ├── AirportBrcmFixup.kext   ← Broadcom WiFi
+    │   ├── AppleALC.kext           ← Audio
+    │   ├── BrcmBluetoothInjector.kext ← Broadcom BT
+    │   ├── BrcmFirmwareData.kext  ← BCM firmware
+    │   ├── BrcmPatchRAM3.kext     ← BT patch
+    │   ├── Lilu.kext              ← Core
+    │   ├── RealtekRTL8100.kext    ← Ethernet
+    │   ├── SMCBatteryManager.kext
+    │   ├── SMCDellSensors.kext
+    │   ├── SMCLightSensor.kext
+    │   ├── SMCProcessor.kext
+    │   ├── SMCSuperIO.kext
+    │   ├── USBInjectAll.kext      ← USB injection
+    │   ├── VirtualSMC.kext        ← SMC
+    │   ├── VoodooPS2Controller.kext ← Keyboard/Mouse
+    │   │   ├── VoodooPS2Keyboard.kext
+    │   │   ├── VoodooPS2Mouse.kext
+    │   │   └── VoodooPS2Trackpad.kext
+    │   ├── VoodooRMI.kext         ← Trackpad RMI
+    │   │   ├── RMII2C.kext
+    │   │   ├── RMISMBus.kext
+    │   │   └── VoodooInput.kext
+    │   ├── VoodooSMBus.kext
+    │   └── WhateverGreen.kext     ← GPU
+    └── Tools/
+        ├── CleanNvram.efi
+        └── OpenShell.efi
 ```
 
 ---
@@ -493,13 +484,11 @@ EFI/
 ## 15. Maintenance & Updates
 
 ### Before Updating macOS
-
 1. **Backup your EFI** — copy `EFI` folder to a safe location
 2. Run Time Machine backup
 3. Note current OpenCore version
 
 ### After Updating macOS
-
 ```bash
 # Rebuild kext cache if anything breaks
 sudo kextcache -i /
@@ -514,14 +503,10 @@ If boot breaks after update:
    ```
 
 ### Check EFI Partition Health
-
 ```bash
 diskutil list
 # Check EFI partition size — should be ~200MB
 # If full, old kernels/logs may be filling it
-
-# Clean old kernels if needed
-sudo rm -rf /Volumes/EFI/EFI/CLOVER/kernels/*
 ```
 
 ---
@@ -530,8 +515,8 @@ sudo rm -rf /Volumes/EFI/EFI/CLOVER/kernels/*
 
 | Item | Value |
 |------|-------|
-| **OpenCore** | 0.8.8 |
-| **macOS Version** | Big Sur 11.7.10 (final) |
+| **OpenCore** | 1.0.7 |
+| **macOS Version** | Monterey 12.7.x |
 | **SMBIOS** | MacBookAir5,2 |
 | **Boot Mode** | UEFI only |
 | **Build Date** | July 2026 |
@@ -541,15 +526,16 @@ sudo rm -rf /Volumes/EFI/EFI/CLOVER/kernels/*
 ## Credits & References
 
 - [OpenCore Install Guide](https://dortania.github.io/OpenCore-Install-Guide/) — The definitive OpenCore reference
-- [gibMacOS](https://github.com/corpnewt/gibMacOS) — Download macOS directly
+- [OpenCorePkg](https://github.com/acidanthera/OpenCorePkg) — OpenCore releases
+- [macrecovery.py](https://github.com/acidanthera/OpenCorePkg/tree/master/Utilities/macrecovery) — macOS recovery image downloader
 - [Dortania](https://dortania.github.io/) — Hackintosh documentation authority
 - [Hackintosh Subreddit](https://reddit.com/r/hackintosh) — Community support
-- OpenCore 0.8.8 by Acidanthera
 
 ---
 
-## No Apple Services
+## Notes
 
-This build does **not** include configured Apple services (iMessage, FaceTime, App Store). For basic research and coding, these are not needed. If you need them, you'll need to generate fresh SMBIOS serials using GenSMBIOS and update `config.plist`.
-
-For research and coding work, this configuration is fully functional and stable.
+- **BCM94352Z WiFi/BT card is required** for WiFi and Bluetooth on Monterey
+- This build does **not** include configured Apple services (iMessage, FaceTime, App Store)
+- For research and coding work, this configuration is fully functional and stable
+- macOS 12.7.x is the final release of Monterey — recommended for Ivy Bridge systems
