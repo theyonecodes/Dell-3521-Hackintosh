@@ -397,8 +397,6 @@
 		<dict>
 			<key>AllowRelocationBlock</key>
 			<false/>
-			<key>AppleCpuPmCfgLock</key>
-			<true/>
 			<key>AvoidRuntimeDefrag</key>
 			<true/>
 			<key>DevirtualiseMmio</key>
