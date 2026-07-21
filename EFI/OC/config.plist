@@ -397,6 +397,8 @@
 		<dict>
 			<key>AllowRelocationBlock</key>
 			<false/>
+			<key>AppleCpuPmCfgLock</key>
+			<true/>
 			<key>AvoidRuntimeDefrag</key>
 			<true/>
 			<key>DevirtualiseMmio</key>
@@ -418,7 +420,7 @@
 			<key>ProtectMemoryRegions</key>
 			<false/>
 			<key>ProtectSecureBoot</key>
-			<false/>
+			<true/>
 			<key>ProtectUefiServices</key>
 			<false/>
 			<key>ProvideCustomSlide</key>
@@ -434,7 +436,7 @@
 			<key>SignalAppleOS</key>
 			<false/>
 			<key>SyncRuntimePermissions</key>
-			<false/>
+			<true/>
 		</dict>
 	</dict>
 	<key>DeviceProperties</key>
@@ -1843,7 +1845,7 @@
 			<key>ResizeGpuBars</key>
 			<integer>-1</integer>
 			<key>TscSyncTimeout</key>
-			<integer>0</integer>
+			<integer>1000</integer>
 			<key>UnblockFsConnect</key>
 			<false/>
 		</dict>
