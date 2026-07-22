@@ -1367,6 +1367,8 @@
 			<string>Auto</string>
 			<key>PollAppleHotKeys</key>
 			<false/>
+			<key>RememberLastBootVolume</key>
+			<false/>
 			<key>ShowPicker</key>
 			<true/>
 			<key>TakeoffDelay</key>
@@ -1533,7 +1535,14 @@
 			<string>-v -no_compat_check -wegnoegpu</string>
 		</dict>
 		<key>Delete</key>
-		<dict/>
+		<dict>
+			<key>7C436110-AB2A-4BBB-A880-FE41995C9F82</key>
+			<array>
+				<string>OC_ALREADY_STARTED</string>
+				<string>StartupCount</string>
+				<string>OC_BOOT_COUNT</string>
+			</array>
+		</dict>
 		<key>LegacyOverwrite</key>
 		<false/>
 		<key>LegacySchema</key>
