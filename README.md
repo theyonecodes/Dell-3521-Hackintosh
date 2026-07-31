@@ -57,7 +57,7 @@ Mac-AFD8A9D944EA4843 is not in the list of SupportedDeviceModels
 Unable to install due to unsupported device (BIErrorDomain Code=2)
 ```
 
-Switching `PlatformInfo.Generic.SystemProductName` to **MacBookPro11,1** (Ivy Bridge-era MacBook Pro) passes the check. Use `Automatic = true` with empty MLB/SN/UUID so OpenCore generates fresh values (do not publish the generated serials). Do **not** use `-no_compat_check` — the SMBIOS fix alone is sufficient and safer.
+Switching `PlatformInfo.Generic.SystemProductName` to **MacBookPro11,1** (Ivy Bridge-era MacBook Pro) passes the check. In the shipped config `MLB`, `SystemSerialNumber`, and `SystemUUID` are intentionally empty and `SpoofVendor = true` (`UpdateSMBIOSMode = Custom`), so no real Apple serial numbers are published in this repo. Do **not** use `-no_compat_check` — the SMBIOS fix alone is sufficient and safer.
 
 ## Why the target disk must be HFS+
 
