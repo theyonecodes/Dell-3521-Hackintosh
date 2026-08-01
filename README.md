@@ -169,22 +169,70 @@ Select **Reinstall macOS Big Sur** → choose the erased partition → Install. 
 
 ## Post-Install — Move EFI to the Internal SSD
 
-Once Big Sur reaches the desktop (and Wi-Fi is confirmed), install OpenCore on the internal disk's EFI partition so the USB can be removed:
+Once Big Sur reaches the desktop (and Wi-Fi is confirmed), install OpenCore on the internal disk's EFI partition so the USB can be removed.
+
+> **Do this manually.** Disk numbers change between machines and boots, and a wrong guess during an automated copy can touch the wrong EFI partition. There is no auto-detection here — you pick the partitions yourself.
+
+### 1. Mount the two EFI partitions
+
+Use **MountEFI** (GUI — mount the USB's `EFI` partition and the internal disk's `EFI` partition), or do it in the terminal. First check the disk IDs:
 
 ```bash
-curl -L -o install_internal_efi.sh \
-  https://raw.githubusercontent.com/theyonecodes/Dell-3521-Hackintosh/BigSur/scripts/install_internal_efi.sh
-bash install_internal_efi.sh
+diskutil list          # note the ~200 MB EFI partitions (USB stick vs internal disk)
 ```
 
-The script:
-- copies the exact bootloader that is currently running (from the USB's EFI partition) to the internal disk's EFI partition,
-- backs up any existing internal EFI as `EFI.orig-<date>`,
-- refuses to run if the detected source disk is the target disk,
-- verifies all three boot files by MD5 (`BOOTx64.efi c2e8…`, `OpenCore.efi c171…`, `config.plist 1ad6…`),
-- sets the internal `OpenCore.efi` as the boot entry via `bless`.
+Then mount both (adjust `disk3s1`/`disk0s1` to what you see):
 
-Reboot without the USB. If the firmware does not auto-boot OpenCore, press **F12** and select the OpenCore / "Windows Boot Manager"-style entry on the internal disk.
+```bash
+sudo mkdir -p /Volumes/EFI-SRC /Volumes/EFI-TGT
+sudo mount -t msdos /dev/disk3s1 /Volumes/EFI-SRC     # USB EFI  (source, has working OpenCore)
+sudo mount -t msdos /dev/disk0s1 /Volumes/EFI-TGT     # internal EFI (target)
+```
+
+### 2. Back up the current internal EFI (rename, never delete)
+
+```bash
+sudo mv /Volumes/EFI-TGT/EFI /Volumes/EFI-TGT/EFI.orig-$(date +%Y%m%d)
+```
+
+### 3. Copy the working EFI
+
+```bash
+sudo ditto /Volumes/EFI-SRC/EFI /Volumes/EFI-TGT/EFI
+```
+
+### 4. Verify
+
+```bash
+md5 /Volumes/EFI-TGT/EFI/BOOT/BOOTx64.efi /Volumes/EFI-TGT/EFI/OC/OpenCore.efi /Volumes/EFI-TGT/EFI/OC/config.plist
+```
+
+Expected (the verified build):
+
+```
+BOOTx64.efi    c2e80064f0d6e8a588b7c2f278ec6a88
+OpenCore.efi   c171f38a5a047c2803981f3439fd9183
+config.plist   1ad657775240cd49a4fefc6d5e58126a
+```
+
+### 5. Set the boot entry and unmount
+
+```bash
+sudo bless --mount /Volumes/EFI-TGT --setBoot --file /Volumes/EFI-TGT/EFI/OC/OpenCore.efi
+sudo umount /Volumes/EFI-SRC /Volumes/EFI-TGT
+```
+
+Reboot **without the USB**. If the firmware does not auto-boot OpenCore, press **F12** and select the OpenCore / "Windows Boot Manager"-style entry on the internal disk.
+
+### Interactive script (alternative)
+
+`scripts/install_internal_efi.sh` automates exactly the steps above **without any auto-detection**: it lists every disk that has an EFI partition, asks you to pick the SOURCE and the TARGET by number, shows both MD5s before touching anything, renames (never deletes) the old internal EFI, and only copies after a final confirmation:
+
+```bash
+curl -L -o install.sh \
+  https://raw.githubusercontent.com/theyonecodes/Dell-3521-Hackintosh/BigSur/scripts/install_internal_efi.sh
+bash install.sh           # or: bash install.sh --list to preview disks only
+```
 
 ### Re-enable USB mapping (after first boot)
 

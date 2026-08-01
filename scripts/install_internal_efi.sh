@@ -1,112 +1,119 @@
 #!/bin/bash
-# Dell Inspiron 3521 Hackintosh: copy the WORKING OpenCore EFI (from the USB)
-# onto the internal disk's EFI partition so the USB can be removed.
+# Dell Inspiron 3521 Hackintosh — INTERACTIVE OpenCore EFI installer.
 #
-# Run this ON THE DELL from a terminal on the running Big Sur install:
-#   curl -L -o install.sh \
-#     https://raw.githubusercontent.com/theyonecodes/Dell-3521-Hackintosh/BigSur/scripts/install_internal_efi.sh
-#   bash install.sh
+# Nothing is auto-detected. You pick the SOURCE (the EFI partition that holds
+# the working OpenCore, usually on the USB) and the TARGET (the internal disk's
+# EFI partition) from a numbered menu. This tool NEVER deletes anything: any
+# existing target EFI is renamed to EFI.orig-<date> instead.
+#
+# Usage:
+#   bash install_internal_efi.sh          interactive install
+#   bash install_internal_efi.sh --list   just list disks, change nothing
+
 set -e
 
-EXPECT_BOOT="c2e80064f0d6e8a588b7c2f278ec6a88"
-EXPECT_OC="c171f38a5a047c2803981f3439fd9183"
-EXPECT_CONFIG="1ad657775240cd49a4fefc6d5e58126a"
-SRCM="/Volumes/EFI-SRC"
-TGTM="/Volumes/EFI-TGT"
+LIST_ONLY=0
+[ "$1" = "--list" ] && LIST_ONLY=1
 
-echo "=== Dell 3521: transfer working OpenCore EFI (USB) to internal disk ==="
+physdisks() { diskutil list physical 2>/dev/null | grep -oE '/dev/disk[0-9]{1,2}'; }
+proto()  { diskutil info "$1" 2>/dev/null | awk -F: '/Protocol/{gsub(/ /,"",$2); print $2}'; }
+efi_of() { diskutil list "$1" 2>/dev/null | awk '$2=="EFI"{print $NF; exit}'; }
+dsize()  { diskutil info "$1" 2>/dev/null | awk -F: '/Disk Size/{gsub(/^ +/,"",$2); print $2}'; }
+dname()  { diskutil info "$1" 2>/dev/null | awk -F: '/Media Name/{gsub(/^ +/,"",$2); print $2}'; }
 
-physdisks() { # physical whole disks as /dev/diskN
-    diskutil list physical 2>/dev/null | grep -oE '/dev/disk[0-9]{1,2}'
-    if [ -z "$(diskutil list physical 2>/dev/null)" ]; then
-        diskutil list | grep -oE '/dev/disk[0-9]{1,2}'
-    fi
-}
-proto() { # disk protocol, e.g. USB / SATA
-    diskutil info "$1" 2>/dev/null | awk -F: '/Protocol/{gsub(/ /,"",$2); print $2}'
-}
-efi_of() { # EFI partition id of a disk, e.g. disk0s1
-    diskutil list "$1" 2>/dev/null | awk '$2=="EFI"{print $NF; exit}'
-}
-probe_has_opencore() { # mount EFI partition $1 and check for OpenCore.efi
-    local m="/Volumes/EFI-PROBE"
-    mkdir -p "$m"
-    if mount -t msdos "/dev/$1" "$m" 2>/dev/null; then
-        if [ -f "$m/EFI/OC/OpenCore.efi" ]; then
-            umount "$m" 2>/dev/null
-            return 0
-        fi
-        umount "$m" 2>/dev/null
-    fi
-    return 1
-}
-
-SRCEFI=""
-if [ -f /Volumes/EFI/EFI/OC/OpenCore.efi ]; then
-    SRCEFI=$(diskutil info /Volumes/EFI 2>/dev/null | awk '/Device Identifier/{print $3}')
-    echo "Source: already-mounted EFI at /Volumes/EFI ($SRCEFI)"
-else
-    echo "Scanning physical disks for the USB EFI with OpenCore.efi..."
-    for d in $(physdisks); do
-        [ "$(proto "$d")" = "USB" ] || continue
-        p=$(efi_of "$d")
-        [ -z "$p" ] && continue
-        if probe_has_opencore "$p"; then SRCEFI="$p"; echo "Source: USB EFI partition $SRCEFI on $d"; break; fi
-    done
-    if [ -z "$SRCEFI" ]; then
-        echo "No USB disk found with OpenCore.efi; scanning all disks (excluding internal)..."
-        for d in $(physdisks); do
-            p=$(efi_of "$d")
-            [ -z "$p" ] && continue
-            if probe_has_opencore "$p"; then SRCEFI="$p"; echo "Source: EFI partition $SRCEFI on $d"; break; fi
-        done
-    fi
-    [ -z "$SRCEFI" ] && { echo "ERROR: no EFI partition containing OpenCore.efi was found on the USB."; echo "Disks visible:"; diskutil list physical; echo "Plug in the working USB and retry."; exit 1; }
-fi
-
-TARGETEFI=""
+DISKS=(); PARTS=(); ROWS=()
 for d in $(physdisks); do
-    [ "$(proto "$d")" = "USB" ] && continue
     p=$(efi_of "$d")
     [ -z "$p" ] && continue
-    TARGETEFI="$p"
-    echo "Target: internal disk $d, EFI partition $TARGETEFI"
-    break
+    DISKS+=("$d"); PARTS+=("$p")
+    ROWS+=("$d  ($(proto "$d"), $(dsize "$d"), $(dname "$d"))  -> EFI partition $p")
 done
-[ -z "$TARGETEFI" ] && { echo "ERROR: no EFI partition found on a non-USB (internal) disk."; exit 1; }
+[ ${#DISKS[@]} -eq 0 ] && { echo "No physical disks with an EFI partition found."; exit 1; }
 
-mkdir -p "$SRCM" "$TGTM"
-mount -t msdos "/dev/$SRCEFI" "$SRCM"
-mount -t msdos "/dev/$TARGETEFI" "$TGTM"
+echo
+echo "=== Disks with an EFI partition ==="
+for i in "${!ROWS[@]}"; do
+    echo "  [$i] ${ROWS[$i]}"
+done
+echo
+echo "  SOURCE should be the disk with the WORKING OpenCore (the USB stick)."
+echo "  TARGET should be the INTERNAL disk whose macOS you booted."
 
-echo "Backing up current internal EFI as EFI.orig-$(date +%Y%m%d)..."
-rm -rf "$TGTM/EFI.orig-"*
-[ -d "$TGTM/EFI" ] && ditto "$TGTM/EFI" "$TGTM/EFI.orig-$(date +%Y%m%d)"
-rm -rf "$TGTM/EFI"
+[ "$LIST_ONLY" = 1 ] && { echo "List-only mode: nothing was changed."; exit 0; }
 
-echo "Copying EFI from $SRCM to $TGTM..."
-ditto "$SRCM/EFI" "$TGTM/EFI"
-sync
+pick() {
+    local n
+    while true; do
+        read -r -p "$1 " n
+        [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -lt ${#DISKS[@]} ] && { REPLY="$n"; return; }
+        echo "Invalid — enter a number from the list above."
+    done
+}
 
-echo "=== Verification (MD5) ==="
-BOOT=$(md5 -q "$TGTM/EFI/BOOT/BOOTx64.efi")
-OC=$(md5 -q "$TGTM/EFI/OC/OpenCore.efi")
-CFG=$(md5 -q "$TGTM/EFI/OC/config.plist")
-echo "BOOTx64.efi    $BOOT  (expected $EXPECT_BOOT)"
-echo "OpenCore.efi   $OC  (expected $EXPECT_OC)"
-echo "config.plist   $CFG  (expected $EXPECT_CONFIG)"
-if [ "$BOOT" = "$EXPECT_BOOT" ] && [ "$OC" = "$EXPECT_OC" ] && [ "$CFG" = "$EXPECT_CONFIG" ]; then
-    echo "All three files match the verified build."
+echo
+pick "Select SOURCE disk number (working OpenCore, usually the USB):"
+SRC=${DISKS[$REPLY]}; SRCP=${PARTS[$REPLY]}
+pick "Select TARGET disk number (internal disk, macOS boot disk):"
+TGT=${DISKS[$REPLY]}; TGTP=${PARTS[$REPLY]}
+
+[ "$SRC" = "$TGT" ] && { echo "ERROR: source and target are the same disk."; exit 1; }
+
+SM="/Volumes/EFI-SRC"; TM="/Volumes/EFI-TGT"
+mkdir -p "$SM" "$TM"
+mount -t msdos "/dev/$SRCP" "$SM" 2>/dev/null || { echo "ERROR: could not mount $SRCP (source)."; exit 1; }
+if [ ! -f "$SM/EFI/OC/OpenCore.efi" ]; then
+    echo "ERROR: $SRCP does not contain EFI/OC/OpenCore.efi — not the working OpenCore EFI."
+    umount "$SM" 2>/dev/null; exit 1
+fi
+echo
+echo "SOURCE  $SRCP  (mounted at $SM)"
+ls "$SM/EFI/OC" | sed 's/^/    /'
+echo "    config.plist  $(md5 -q "$SM/EFI/OC/config.plist")"
+
+mount -t msdos "/dev/$TGTP" "$TM" 2>/dev/null || { echo "ERROR: could not mount $TGTP (target)."; umount "$SM" 2>/dev/null; exit 1; }
+echo
+echo "TARGET  $TGTP  (mounted at $TM)"
+if [ -d "$TM/EFI" ]; then
+    ls "$TM/EFI/OC" 2>/dev/null | sed 's/^/    /'
+    [ -f "$TM/EFI/OC/config.plist" ] && echo "    config.plist  $(md5 -q "$TM/EFI/OC/config.plist")"
 else
-    echo "WARNING: MD5 mismatch — files were modified; the copied EFI may not be the verified build."
+    echo "    (no EFI folder — will create one)"
 fi
 
-echo "Setting internal OpenCore as the boot entry..."
-bless --mount "$TGTM" --setBoot --file "$TGTM/EFI/OC/OpenCore.efi" 2>/dev/null \
-    && echo "boot entry set." \
-    || echo "bless did not set a boot entry (normal on some Dell firmware) — press F12 at boot and select OpenCore on the internal disk."
+echo
+echo "Plan:"
+echo "  - rename $TGTP/EFI -> EFI.orig-$(date +%Y%m%d)   (only if it exists)"
+echo "  - copy $SRCP/EFI -> $TGTP/EFI"
+read -r -p "Continue? [y/N] " yn
+case "$yn" in y|Y|yes) ;; *)
+    echo "Aborted — nothing was changed."
+    umount "$SM" 2>/dev/null; umount "$TM" 2>/dev/null; exit 0;; esac
 
-umount "$SRCM"
-umount "$TGTM" 2>/dev/null || diskutil unmount "$TGTM"
-echo "DONE - internal EFI installed on $TARGETEFI. USB can be removed."
-echo "Next: reboot without the USB and confirm OpenCore starts from the internal SSD."
+if [ -d "$TM/EFI" ]; then
+    mv "$TM/EFI" "$TM/EFI.orig-$(date +%Y%m%d)"
+    echo "Backed up old internal EFI as EFI.orig-$(date +%Y%m%d)."
+fi
+ditto "$SM/EFI" "$TM/EFI"
+sync
+
+echo
+echo "=== Verification ==="
+B=$(md5 -q "$TM/EFI/BOOT/BOOTx64.efi")
+O=$(md5 -q "$TM/EFI/OC/OpenCore.efi")
+C=$(md5 -q "$TM/EFI/OC/config.plist")
+echo "  BOOTx64.efi    $B"
+echo "  OpenCore.efi   $O"
+echo "  config.plist   $C"
+
+echo
+read -r -p "Set this OpenCore as the boot entry via bless? [y/N] " yn
+case "$yn" in y|Y|yes)
+    bless --mount "$TM" --setBoot --file "$TM/EFI/OC/OpenCore.efi" && echo "boot entry set." \
+      || echo "bless failed (normal on some Dell firmware) — press F12 at power-on and select OpenCore."
+    ;; *) echo "Skipped — press F12 at power-on to select OpenCore.";; esac
+
+umount "$SM" 2>/dev/null
+umount "$TM" 2>/dev/null || diskutil unmount "$TM" 2>/dev/null || true
+echo
+echo "DONE. Internal EFI on $TGTP now contains the working OpenCore."
+echo "Reboot WITHOUT the USB and confirm OpenCore starts from the internal disk."
