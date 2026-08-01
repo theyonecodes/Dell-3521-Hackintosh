@@ -12,6 +12,10 @@
 
 set -e
 
+if [ "$(id -u)" != "0" ]; then
+    exec sudo bash "$0" "$@"
+fi
+
 LIST_ONLY=0
 [ "$1" = "--list" ] && LIST_ONLY=1
 
