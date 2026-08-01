@@ -18,11 +18,32 @@ echo "=== Dell 3521: transfer working OpenCore EFI (USB) to internal disk ==="
 
 # --- locate the source EFI partition: the one containing OpenCore.efi ---
 find_efi_with_opencore() {
-    local disk part
+    # Prefer EFI partitions on USB (Protocol: USB) disks — the source USB stick.
+    # Fall back to any EFI partition containing OpenCore.efi that is NOT the
+    # disk macOS runs from (the internal target).
+    local disk part m proto boot
+    boot=$(df / | tail -1 | awk '{print $1}' | sed -E 's|/dev/disk([0-9]{1,2})s[0-9]+.*|disk\1|')
     for disk in $(diskutil list | sed -n 's/^\(\/dev\/disk[0-9]\{1,2\}\)$/ \1 /p'); do
         part=$(diskutil list "$disk" 2>/dev/null | awk '$2=="EFI"{print $NF; exit}')
         [ -z "$part" ] && continue
-        local m="/Volumes/EFI-PROBE"
+        proto=$(diskutil info "$disk" 2>/dev/null | awk -F: '/Protocol/{gsub(/ /,"",$2); print $2}')
+        [ "$proto" = "USB" ] || continue
+        m="/Volumes/EFI-PROBE"
+        mkdir -p "$m"
+        mount -t msdos "/dev/$part" "$m" 2>/dev/null || { umount "$m" 2>/dev/null; continue; }
+        if [ -f "$m/EFI/OC/OpenCore.efi" ]; then
+            echo "$part"
+            umount "$m"
+            return 0
+        fi
+        umount "$m" 2>/dev/null
+    done
+    # fallback: any EFI with OpenCore on a disk other than the boot disk
+    for disk in $(diskutil list | sed -n 's/^\(\/dev\/disk[0-9]\{1,2\}\)$/ \1 /p'); do
+        [ "$disk" = "/dev/$boot" ] && continue
+        part=$(diskutil list "$disk" 2>/dev/null | awk '$2=="EFI"{print $NF; exit}')
+        [ -z "$part" ] && continue
+        m="/Volumes/EFI-PROBE"
         mkdir -p "$m"
         mount -t msdos "/dev/$part" "$m" 2>/dev/null || { umount "$m" 2>/dev/null; continue; }
         if [ -f "$m/EFI/OC/OpenCore.efi" ]; then
@@ -39,7 +60,7 @@ if [ -f /Volumes/EFI/EFI/OC/OpenCore.efi ]; then
     SRCEFI=$(diskutil info /Volumes/EFI 2>/dev/null | awk '/Device Identifier/{print $3}')
     echo "Source: already-mounted EFI at /Volumes/EFI ($SRCEFI)"
 else
-    SRCEFI=$(find_efi_with_opencore) || { echo "ERROR: no EFI partition containing OpenCore.efi found. Plug in the working USB and retry."; exit 1; }
+    SRCEFI=$(find_efi_with_opencore) || { echo "ERROR: no EFI partition containing OpenCore.efi found on the USB. Plug in the working USB and retry."; exit 1; }
     echo "Source: USB EFI partition $SRCEFI"
 fi
 
