@@ -1,12 +1,12 @@
 # Hackintosh macOS Big Sur 11.7.11 on Dell Inspiron 3521 — OpenCore 1.0.7
 
-> **Status: VERIFIED WORKING** on real hardware (July 2026). macOS Big Sur 11.7.11 was installed and booted on this laptop using exactly the files in this branch.
+> **Status: VERIFIED WORKING** on real hardware (August 2026). macOS Big Sur 11.7.11 installed and booted on this laptop using exactly the files in this branch, including **working Wi-Fi** on the internal Atheros AR9565 card.
 
 ## Repo Branches
 
 | Branch | Status |
 |--------|--------|
-| **BigSur** (default) | ✅ Verified working build (this branch) |
+| **BigSur** (default) | ✅ Verified working build (this branch) — Wi-Fi included |
 | **Monterey** | ⚠️ Experimental — not verified, config is not fully consistent (see its README) |
 | **Sequoia** | ⚠️ Not a working Sequoia build — still ships OpenCore 0.8.8 (see its README) |
 
@@ -18,7 +18,7 @@
 |-----------|-------|-------------|
 | **CPU** | Intel Core i3 3217U (Ivy Bridge, 1.8 GHz) | ✅ Native |
 | **GPU** | Intel HD Graphics 4000 | ✅ Native |
-| **WiFi** | Atheros AR9560 (`168C:0036`) | ✅ Working (2.4 GHz) |
+| **WiFi** | Atheros AR9565 (`168C:0036`) | ✅ Working (2.4 GHz) |
 | **Ethernet** | Realtek RTL8101E (`10EC:8136`) | ✅ Working |
 | **Bluetooth** | Atheros AR3011 (`0CF3:3004`) | ❌ No Big Sur driver |
 | **Audio** | ALC3221 (mapped to ALC282) | ✅ Working |
@@ -31,9 +31,58 @@
 
 ## What Works / What Doesn't
 
-**Works:** internal SSD boot, WiFi 2.4 GHz (~40-50 Mbps, 802.11n), Ethernet 100 Mbps, brightness (Fn+Up/Down), battery %, sleep/wake, audio (speakers + headphone), camera, USB, HDMI, SD card reader, dual-boot with Windows 10 (preserved partition).
+**Works:** internal SSD boot, Wi-Fi 2.4 GHz (802.11n, ~35–45 Mbps — see speed note), Ethernet 100 Mbps, brightness (Fn+Up/Down), battery %, sleep/wake, audio (speakers + headphone), camera, USB, HDMI, SD card reader, dual-boot with Windows 10 (preserved partition).
 
-**Doesn't work:** Bluetooth (AR3011 has no Big Sur driver — use a USB BT 4.0 dongle), 5 GHz WiFi (AR9560 is 2.4 GHz only), Metal GPU API (HD4000 predates Metal), macOS Monterey and newer (HD4000 too old).
+**Doesn't work:** Bluetooth (AR3011 has no Big Sur driver — use a USB BT 4.0 dongle), 5 GHz Wi-Fi (AR9565 is 2.4 GHz only), Metal GPU API (HD4000 predates Metal), macOS Monterey and newer (HD4000 too old).
+
+### About the Wi-Fi speed
+
+The AR9565 is a **2.4 GHz-only, 1×1 (single spatial stream) 802.11n** card. Its PHY ceiling is 72 Mbps at 20 MHz channels, so ~35–45 Mbps real-world throughput is **normal and hardware-limited** — no kext or config change raises it. If the router's 2.4 GHz channel width is set to 20 MHz, switching it to **40 MHz** lifts the PHY to 150 Mbps (~60–75 real-world), if the signal allows it.
+
+---
+
+## Wi-Fi: what is actually in the working build (important)
+
+The Wi-Fi stack is the **High Sierra-era** Apple framework injected via OpenCore:
+
+```
+HS80211Family.kext                                    ← com.apple.iokit.HS80211Family (10.13 framework, v1200.12.2)
+AirPortAtheros40.kext                                 ← com.apple.driver.AirPort.Atheros40 (v700.74.5, AR9565 device ID patched in)
+WifiLocFix.kext                                       ← com.pj.Software.driver.WifiInjection (binary-less property injector)
+```
+
+### Gotcha 1 — `ExecutablePath` must be set (this caused a kernel panic)
+
+Both `HS80211Family.kext` and `AirPortAtheros40.kext` **must** have their `ExecutablePath` filled in:
+
+```xml
+<key>ExecutablePath</key><string>Contents/MacOS/HS80211Family</string>
+```
+
+If `ExecutablePath` is empty, the kext is added to the in-memory kext collection **without its Mach-O binary**, and boot panics in the kext collection builder:
+
+```
+can't perform kext scan: no kext summary
+SKext::setVMAttributes → initWithPrelinkedInfoDict → addKextsFromKextCollection → InitIOKit
+```
+
+This is a config bug, not a driver problem — the exact same kext binaries boot fine with `ExecutablePath` set.
+
+### Gotcha 2 — the legacy ElCap stack does NOT work on Big Sur
+
+The older 10.11 stack (`IO80211ElCap.kext` + `corecaptureElCap.kext` + its bundled `AirPortAtheros40`) **boots but never produces a Wi-Fi interface**. The driver matches the card (`IONameMatched = pci168c,36`) but never starts — visible in `ioreg` as:
+
+```
++-o AirPort_AtherosNewma40 <... !registered, !matched, active, busy 0 (0 ms)>
+```
+
+No `IO80211Interface` is ever created. Do not use that stack. The 10.13 `HS80211Family` + `AirPortAtheros40` pair is required.
+
+### Gotcha 3 — WifiLocFix (country-code fix)
+
+`WifiLocFix.kext` is a binary-less IOKit personality (`AppleUSBMergeNub` over `AtherosNewma40Interface`) that merges `IO80211CountryCode=ID` / `IO80211Locale=ETSI` onto the AirPort interface. It prevents the country-code/locale teardown that leaves the card attached with no usable network. Keep it enabled.
+
+> Note: the shipped `config.plist` lists `WifiLocFix.kext` twice under `Kernel → Add`. OpenCore deduplicates kexts by bundle path, so this is harmless — it is a leftover from verification and intentionally left untouched because the build is boot-proven.
 
 ---
 
@@ -47,6 +96,7 @@
 | **Boot args** | `-v debug=0x100 keepsyms=1` |
 | **SecureBootModel** | `Disabled` |
 | **Boot mode** | UEFI only |
+| **Misc.Debug** | `Target=99`, `DisplayLevel=0x80000004`, `ApplePanic=True` (panic capture on) |
 
 ## Why MacBookPro11,1 SMBIOS?
 
@@ -82,6 +132,7 @@ Copy this branch's `EFI/` folder onto the USB's EFI partition and verify (MD5 of
 ```
 EFI/BOOT/BOOTx64.efi    c2e80064f0d6e8a588b7c2f278ec6a88
 EFI/OC/OpenCore.efi     c171f38a5a047c2803981f3439fd9183
+EFI/OC/config.plist     1ad657775240cd49a4fefc6d5e58126a
 ```
 
 > **Note for USB-mapped builds:** the USB map kexts (`USBToolBox.kext`, `UTBDefault.kext`, `UTBMap.kext`) ship **disabled** in `config.plist` so the installer's own USB stack is untouched. Boot the installer from the **left-side USB 3.0 port**.
@@ -118,7 +169,7 @@ Select **Reinstall macOS Big Sur** → choose the erased partition → Install. 
 
 ## Post-Install — Move EFI to the Internal SSD
 
-Once Big Sur reaches the desktop, install OpenCore on the internal disk's empty EFI partition (`disk0s1`) so the USB can be removed:
+Once Big Sur reaches the desktop (and Wi-Fi is confirmed), install OpenCore on the internal disk's EFI partition so the USB can be removed:
 
 ```bash
 curl -L -o install_internal_efi.sh \
@@ -126,7 +177,14 @@ curl -L -o install_internal_efi.sh \
 bash install_internal_efi.sh
 ```
 
-The script copies the exact bootloader that is currently running (from the USB EFI partition), backs up any existing internal EFI as `EFI.orig-<date>`, verifies all files by MD5, and refuses to run if the target is the USB itself. Reboot without the USB and confirm OpenCore starts from the internal SSD.
+The script:
+- copies the exact bootloader that is currently running (from the USB's EFI partition) to the internal disk's EFI partition,
+- backs up any existing internal EFI as `EFI.orig-<date>`,
+- refuses to run if the detected source disk is the target disk,
+- verifies all three boot files by MD5 (`BOOTx64.efi c2e8…`, `OpenCore.efi c171…`, `config.plist 1ad6…`),
+- sets the internal `OpenCore.efi` as the boot entry via `bless`.
+
+Reboot without the USB. If the firmware does not auto-boot OpenCore, press **F12** and select the OpenCore / "Windows Boot Manager"-style entry on the internal disk.
 
 ### Re-enable USB mapping (after first boot)
 
@@ -135,6 +193,20 @@ USB map kexts are disabled for installation. After the first boot from the inter
 ### Windows dual-boot
 
 Windows 10 lives on a separate NTFS partition and must be preserved — the erase above only touches the macOS partition. The OpenCore picker shows the Windows entry automatically.
+
+---
+
+## Diagnostics
+
+`scripts/DIAGNOSE.sh` collects the Wi-Fi/kernel state needed to debug the Atheros stack on the Dell (run it from the EFI volume, which macOS does not auto-mount):
+
+```bash
+sudo diskutil list            # find the ~200 MB EFI partition
+sudo diskutil mount disk1s1   # mount the USB's EFI partition
+sudo /Volumes/EFI/DIAGNOSE.sh # writes /Volumes/EFI/DIAGNOSE-output.txt
+```
+
+Key things it reports: `kextstat` of the Wi-Fi stack, kernel log lines, the `IO80211Plane`, and whether `AirPort_AtherosNewma40` is `registered`/`busy` — which distinguishes "driver never starts" (ElCap stack) from "country-code teardown" (WifiLocFix case).
 
 ---
 
@@ -161,36 +233,48 @@ EFI/
     │   ├── OpenRuntime.efi
     │   └── ResetNvramEntry.efi
     ├── Kexts/
-    │   ├── AppleALC.kext            ← audio (ALC282)
-    │   ├── Ath3kBT.kext             ← AR3011 BT (injector + no driver)
+    │   ├── AirPortAtheros40.kext      ← AR9565 Wi-Fi driver (10.13, patched) — REQUIRED
+    │   ├── HS80211Family.kext         ← AR9565 Wi-Fi framework (10.13) — REQUIRED, loads FIRST
+    │   ├── WifiLocFix.kext            ← country-code/locale fix (binary-less)
+    │   ├── AppleALC.kext              ← audio (ALC282)
+    │   ├── Ath3kBT.kext               ← AR3011 BT (injector + no driver)
     │   ├── Ath3kBTInjector.kext
-    │   ├── BrightnessKeys.kext      ← Fn brightness hotkeys
-    │   ├── corecaptureElCap.kext    ← AR9560 WiFi (loads AFTER IO80211ElCap)
+    │   ├── BrightnessKeys.kext        ← Fn brightness hotkeys
     │   ├── ECEnabler.kext
-    │   ├── IO80211ElCap.kext        ← legacy WiFi framework (loads FIRST)
-    │   ├── Lilu.kext                ← core
-    │   ├── RealtekCardReader.kext   ← SD slot
+    │   ├── Lilu.kext                  ← core
+    │   ├── RealtekCardReader.kext     ← SD slot
     │   ├── RealtekCardReaderFriend.kext
-    │   ├── RealtekRTL8100.kext      ← RTL8101E Ethernet
-    │   ├── SMCBatteryManager.kext   ← battery
-    │   ├── SMCDellSensors.kext      ← Dell sensors
+    │   ├── RealtekRTL8100.kext        ← RTL8101E Ethernet
+    │   ├── SMCBatteryManager.kext     ← battery
+    │   ├── SMCDellSensors.kext        ← Dell sensors
     │   ├── SMCLightSensor.kext
     │   ├── SMCProcessor.kext
     │   ├── SMCSuperIO.kext
-    │   ├── USBToolBox.kext          ← USB mapping (DISABLED for install)
-    │   ├── UTBDefault.kext          ← (DISABLED for install)
-    │   ├── UTBMap.kext              ← (DISABLED for install)
-    │   ├── VirtualSMC.kext          ← SMC emulation
-    │   ├── VoodooPS2Controller.kext ← keyboard / trackpad
-    │   └── WhateverGreen.kext       ← GPU patches
-    └── Resources/                   ← OpenCanopy assets (unused; picker = Builtin)
+    │   ├── USBToolBox.kext            ← USB mapping (DISABLED for install)
+    │   ├── UTBDefault.kext            ← (DISABLED for install)
+    │   ├── UTBMap.kext                ← (DISABLED for install)
+    │   ├── VirtualSMC.kext            ← SMC emulation
+    │   ├── VoodooPS2Controller.kext   ← keyboard / trackpad
+    │   └── WhateverGreen.kext         ← GPU patches
+    └── Resources/                     ← OpenCanopy assets (unused; picker = Builtin)
 ```
 
-WiFi kext order is mandatory: `IO80211ElCap.kext` must load **before** `corecaptureElCap.kext`, or WiFi will not appear.
+Wi-Fi kext order in `config.plist → Kernel → Add` is mandatory: `HS80211Family.kext` **first**, then `AirPortAtheros40.kext`, then `WifiLocFix.kext` — and all three `ExecutablePath` values must be populated (see the Wi-Fi section).
 
 ---
 
 ## Troubleshooting
+
+### Kernel panic: `can't perform kext scan: no kext summary` / `SKext::setVMAttributes`
+
+Cause: a kext in `Kernel → Add` is missing its `ExecutablePath` (this repo previously shipped `HS80211Family.kext` / `AirPortAtheros40.kext` with empty paths). Fix: set `ExecutablePath` to `Contents/MacOS/HS80211Family` (and `Contents/MacOS/AirPortAtheros40`).
+
+### Wi-Fi card detected but no interface / "No Hardware Installed"
+
+- Confirm all three Wi-Fi kexts are enabled and in the right order (see above).
+- Check `ioreg -p IO80211Plane -l -w0`: if `AirPort_AtherosNewma40` is `!registered` / `busy 0 (0 ms)`, the driver never started — you are on the wrong (ElCap) stack; use `HS80211Family` + `AirPortAtheros40`.
+- Confirm `WifiLocFix.kext` is enabled — it cures the country-code teardown.
+- `sudo kextcache -i /` after changes.
 
 ### "The update cannot be installed on this computer" (installer)
 
@@ -203,11 +287,6 @@ Check the installer log (`/var/log/install.log`):
 - Use verbose mode (`-v` is already set) to see where it stops.
 - Reset NVRAM from the picker (Space → Reset NVRAM).
 - Boot from the left-side USB 3.0 port only.
-
-### WiFi missing
-
-- Confirm `IO80211ElCap.kext` loads before `corecaptureElCap.kext`.
-- Reset NVRAM, then rebuild the kext cache: `sudo kextcache -i /`
 
 ### Bluetooth not working
 
@@ -223,7 +302,7 @@ Known hardware limitation: AR3011 has no Big Sur driver. Use a USB Bluetooth 4.0
 | **macOS** | Big Sur 11.7.11 (final) |
 | **SMBIOS** | MacBookPro11,1 |
 | **Boot mode** | UEFI only |
-| **Build date** | July 2026 |
+| **Build date** | August 2026 |
 
 ## Credits
 
@@ -231,5 +310,6 @@ Known hardware limitation: AR3011 has no Big Sur driver. Use a USB Bluetooth 4.0
 - [gibMacOS](https://github.com/corpnewt/gibMacOS)
 - OpenCore by Acidanthera
 - [Hackintosh Subreddit](https://reddit.com/r/hackintosh)
+- `WifiLocFix.kext` — fake AirPort location interface (InsanelyMac community)
 
 No Apple services (iMessage/FaceTime/App Store) are configured. To use them, generate fresh SMBIOS serials with GenSMBIOS and update `config.plist` — never publish real serials.
