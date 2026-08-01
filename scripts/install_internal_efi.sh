@@ -59,8 +59,18 @@ TGT=${DISKS[$REPLY]}; TGTP=${PARTS[$REPLY]}
 [ "$SRC" = "$TGT" ] && { echo "ERROR: source and target are the same disk."; exit 1; }
 
 SM="/Volumes/EFI-SRC"; TM="/Volumes/EFI-TGT"
-mkdir -p "$SM" "$TM"
+prep_mountpoint() {
+    local mp="$1"
+    if mount | grep -q " on $mp ("; then
+        echo "ERROR: $mp is already an active mountpoint. Unmount it first, then retry."; exit 1
+    fi
+    rm -rf "$mp" 2>/dev/null || true
+    mkdir -p "$mp"
+}
+prep_mountpoint "$SM"; prep_mountpoint "$TM"
+
 mount -t msdos "/dev/$SRCP" "$SM" 2>/dev/null || { echo "ERROR: could not mount $SRCP (source)."; exit 1; }
+mount | grep -q " on $SM (" || { echo "ERROR: mount of $SRCP did not take effect."; exit 1; }
 if [ ! -f "$SM/EFI/OC/OpenCore.efi" ]; then
     echo "ERROR: $SRCP does not contain EFI/OC/OpenCore.efi — not the working OpenCore EFI."
     umount "$SM" 2>/dev/null; exit 1
@@ -71,6 +81,7 @@ ls "$SM/EFI/OC" | sed 's/^/    /'
 echo "    config.plist  $(md5 -q "$SM/EFI/OC/config.plist")"
 
 mount -t msdos "/dev/$TGTP" "$TM" 2>/dev/null || { echo "ERROR: could not mount $TGTP (target)."; umount "$SM" 2>/dev/null; exit 1; }
+mount | grep -q " on $TM (" || { echo "ERROR: mount of $TGTP did not take effect."; umount "$SM" 2>/dev/null; exit 1; }
 echo
 echo "TARGET  $TGTP  (mounted at $TM)"
 if [ -d "$TM/EFI" ]; then

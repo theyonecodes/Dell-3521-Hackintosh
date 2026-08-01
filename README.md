@@ -177,23 +177,31 @@ Once Big Sur reaches the desktop (and Wi-Fi is confirmed), install OpenCore on t
 
 Use **MountEFI** (GUI — mount the USB's `EFI` partition and the internal disk's `EFI` partition), or do it in the terminal. First check the disk IDs:
 
+> **Paste one line at a time.** In an interactive zsh shell, `#` is **not** a comment — zsh tries to glob-expand it and the command never runs (you'll see `zsh: unknown sort specifier` / `zsh: number expected`). Only the `### 2` backup line uses `#`, and it is a `$(...)` substitution, not a comment.
+
+First check the disk IDs:
+
 ```bash
-diskutil list          # note the ~200 MB EFI partitions (USB stick vs internal disk)
+diskutil list
 ```
 
-Then mount both (adjust `disk3s1`/`disk0s1` to what you see):
+Note the ~200 MB `EFI` partitions — one on the USB stick (source) and one on the internal disk (target). Then mount both, adjusting `disk3s1`/`disk0s1` to what you see:
 
 ```bash
 sudo mkdir -p /Volumes/EFI-SRC /Volumes/EFI-TGT
-sudo mount -t msdos /dev/disk3s1 /Volumes/EFI-SRC     # USB EFI  (source, has working OpenCore)
-sudo mount -t msdos /dev/disk0s1 /Volumes/EFI-TGT     # internal EFI (target)
+sudo mount -t msdos /dev/disk3s1 /Volumes/EFI-SRC
+sudo mount -t msdos /dev/disk0s1 /Volumes/EFI-TGT
 ```
+
+Both mounts must succeed. `ditto` failing with `Cannot get the real path for source` means the source was never mounted — stop there, don't continue.
 
 ### 2. Back up the current internal EFI (rename, never delete)
 
 ```bash
 sudo mv /Volumes/EFI-TGT/EFI /Volumes/EFI-TGT/EFI.orig-$(date +%Y%m%d)
 ```
+
+Only run this if `EFI` actually exists on the target; `usage: mv` means it doesn't.
 
 ### 3. Copy the working EFI
 
