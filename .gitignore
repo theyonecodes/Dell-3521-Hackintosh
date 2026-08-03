@@ -13,6 +13,19 @@
 BaseSystem.dmg
 BaseSystem.chunklist
 
+# Windows boot files (machine-specific, generated via bcdboot)
+EFI/Microsoft/Boot/BCD
+EFI/Microsoft/Boot/BCD.LOG*
+EFI/Microsoft/Boot/BOOTSTAT.DAT
+
+# Windows recovery/debug tools (machine-specific)
+EFI/Microsoft/Boot/kd_*.dll
+EFI/Microsoft/Boot/kdnet_*.dll
+EFI/Microsoft/Boot/kdstub.dll
+EFI/Microsoft/Boot/memtest.efi
+EFI/Microsoft/Boot/SecureBootRecovery.efi
+EFI/Microsoft/Boot/winsipolicy.p7b
+
 # Generated SMBIOS — each user must create their own
 # config.plist contains example serials; generate yours with GenSMBIOS
 
