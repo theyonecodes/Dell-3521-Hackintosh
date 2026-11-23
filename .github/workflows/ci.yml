@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: false
+    
+    - name: Validate EFI structure
+      run: |
+        # Check for required EFI directories
+        if (Test-Path "EFI") {
+          Write-Host "EFI directory found"
+          $requiredDirs = @("EFI/BOOT", "EFI/OC")
+          foreach ($dir in $requiredDirs) {
+            if (Test-Path $dir) {
+              Write-Host "  ✓ $dir exists"
+            } else {
+              Write-Warning "  ⚠ $dir missing"
+            }
+          }
+        } else {
+          Write-Error "EFI directory not found"
+          exit 1
+        }
+    
+    - name: Validate config.plist (if OpenCore)
+      if: hashFiles('EFI/OC/config.plist') != ''
+      run: |
+        # Check if config.plist is valid XML
+        $xml = [xml](Get-Content "EFI/OC/config.plist" -Raw)
+        Write-Host "  ✓ config.plist is valid XML"
+    
+    - name: Check for large files
+      run: |
+        $largeFiles = Get-ChildItem -Recurse -File | Where-Object { $_.Length -gt 10MB } | Select-Object Name, FullName, @{Name="SizeMB"; Expression={[math]::Round($_.Length/1MB,1)}}
+        if ($largeFiles) {
+          Write-Host "Large files found (>10MB):"
+          $largeFiles | Format-Table Name, SizeMB -AutoSize | Out-Host
+        } else {
+          Write-Host "No files >10MB"
+        }
+
+  docs:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    needs: validate
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: false
+    
+    - name: Check README exists
+      run: |
+        if (Test-Path "README.md") {
+          Write-Host "  ✓ README.md exists"
+        } else {
+          Write-Warning "  ⚠ README.md missing"
+        }
+    
+    - name: Check LICENSE
+      run: |
+        $licenseFiles = Get-ChildItem -File -Include "LICENSE*", "LICENCE*", "COPYING*"
+        if ($licenseFiles.Count -gt 0) {
+          Write-Host "  ✓ License file found: $($licenseFiles[0].Name)"
+        } else {
+          Write-Warning "  ⚠ No license file found"
+        }
